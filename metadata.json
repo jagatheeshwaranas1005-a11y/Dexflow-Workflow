@@ -1,0 +1,5 @@
+{
+  "name": "Dexflow Ad Workflow",
+  "description": "A professional ad production workflow management system with role-based access for Artists, Proofers, and Admins.",
+  "requestFramePermissions": []
+}
