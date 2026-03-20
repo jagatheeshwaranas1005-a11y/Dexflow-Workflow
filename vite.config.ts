@@ -1,38 +1,16 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
-
-  return {
-    plugins: [react(), tailwindcss()],
-
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-        motion: 'framer-motion', // prevents wrong entry resolution
-      },
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '.'),
     },
-
-    optimizeDeps: {
-      include: [
-        '@emotion/react',
-        '@emotion/styled',
-        '@emotion/is-prop-valid',
-        'framer-motion'
-      ],
-    },
-
-    build: {
-      commonjsOptions: {
-        transformMixedEsModules: true,
-      },
-    },
-
-    server: {
-      hmr: true,
-    },
-  };
+  },
+  server: {
+    hmr: true,
+  },
 });
