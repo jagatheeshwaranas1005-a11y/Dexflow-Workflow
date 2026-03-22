@@ -362,10 +362,10 @@ export default function App() {
         <AnimatePresence mode="sync">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, y: 0 }}
+            transition={{ duration: 0.08, ease: "easeOut" }}
           >
             {activeTab === 'submit' && <SubmitAdView user={user} config={config} artists={artists} onComplete={() => showToast('Ad submitted!')} />}
             {activeTab === 'errors' && <MyErrorsView user={user} />}
