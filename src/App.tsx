@@ -359,7 +359,7 @@ export default function App() {
 
       {/* Body */}
       <main className="flex-1 p-8 max-w-7xl mx-auto w-full">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 10 }}
@@ -432,7 +432,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
     if (data) setSubmissions(data as Submission[]);
   };
 
-  useEffect(loadSubmissions, [user.name]);
+  useEffect(() => { loadSubmissions(); }, [user.name]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -634,7 +634,7 @@ function MyErrorsView({ user }: any) {
     }
   };
 
-  useEffect(loadErrors, [user.name]);
+  useEffect(() => { loadErrors(); }, [user.name]);
 
   const handleAppeal = async () => {
     if (appealDesc.length < 20) return alert('Please provide at least 20 characters');
@@ -753,7 +753,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
     if (data) setAds(data as Submission[]);
   };
 
-  useEffect(loadAds, []);
+  useEffect(() => { loadAds(); }, []);
 
   const handleAdIdChange = (val: string) => {
     const adId = val.toUpperCase();
@@ -1080,7 +1080,7 @@ function AppealsView({ user }: any) {
     }
   };
 
-  useEffect(loadAppeals, [user.role]);
+  useEffect(() => { loadAppeals(); }, [user.role]);
 
   const handleApprove = async (id: number) => {
     const status = 'Appeal Accepted';
@@ -1611,7 +1611,7 @@ function AdminUsersView() {
     if (data) setUsers(data as User[]);
   };
 
-  useEffect(loadUsers, []);
+  useEffect(() => { loadUsers(); }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1943,7 +1943,7 @@ function QueriesView({ user, onComplete }: any) {
     if (data) setQueries(data as Query[]);
   };
 
-  useEffect(loadQueries, [user.role, user.name]);
+  useEffect(() => { loadQueries(); }, [user.role, user.name]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

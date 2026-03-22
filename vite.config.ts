@@ -7,7 +7,20 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'supabase': ['@supabase/supabase-js'],
+          'charts': ['recharts'],
+          'motion': ['framer-motion'],
+          'icons': ['lucide-react'],
+        },
+      },
     },
   },
   server: {
