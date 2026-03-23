@@ -11,18 +11,17 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'supabase': ['@supabase/supabase-js'],
-          'charts': ['recharts'],
-          'motion': ['framer-motion'],
-          'icons': ['lucide-react'],
-        },
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'supabase': ['@supabase/supabase-js'],
+        'charts': ['recharts'],
+        'motion': ['framer-motion'],
+        'icons': ['lucide-react'],
       },
     },
   },
+},
   server: {
     hmr: true,
   },

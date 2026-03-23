@@ -1827,36 +1827,26 @@ function AdminUsersView() {
   );
 }
 
-function AdminConfigView({ config, refresh }: any) {
-  const [newVal, setNewVal] = useState<Record<string, string>>({});
-
-  const add = async (type: string) => {
-    const value = newVal[type];
-    if (!value) return;
-    const { error } = await supabase.from('config').insert({ type, value });
-    if (!error) {
-      setNewVal({ ...newVal, [type]: '' });
-      refresh();
-    }
-  };
-
-  const remove = async (type: string, value: string) => {
-    const { error } = await supabase.from('config').delete().eq('type', type).eq('value', value);
-    if (!error) refresh();
-  };
-
-  const ConfigSection = ({ type, title }: { type: string, title: string }) => (
+function ConfigSection({ type, title, config, onAdd, onRemove, inputVal, onInputChange }: {
+  type: string; title: string; config: any;
+  onAdd: (type: string) => void;
+  onRemove: (type: string, value: string) => void;
+  inputVal: string;
+  onInputChange: (type: string, val: string) => void;
+}) {
+  return (
     <Card className="overflow-hidden">
       <div className="p-4 border-b border-slate-100">
         <h3 className="text-base font-bold text-slate-900 mb-3">{title}</h3>
         <div className="flex gap-2">
-          <input 
-            value={newVal[type] || ''}
-            onChange={e => setNewVal({ ...newVal, [type]: e.target.value })}
+          <input
+            value={inputVal}
+            onChange={e => onInputChange(type, e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && onAdd(type)}
             className="flex-1 px-3 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium text-slate-700"
             placeholder="Add new option..."
           />
-          <Button onClick={() => add(type)} className="px-4 py-2 text-xs font-bold">Add</Button>
+          <Button onClick={() => onAdd(type)} className="px-4 py-2 text-xs font-bold">Add</Button>
         </div>
       </div>
       <div className="p-2">
@@ -1865,7 +1855,7 @@ function AdminConfigView({ config, refresh }: any) {
             <div key={v} className="group flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
               <span className="text-slate-700 font-semibold text-sm">{v}</span>
               <button 
-                onClick={() => remove(type, v)} 
+                onClick={() => onRemove(type, v)}
                 className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 text-[10px] font-bold uppercase tracking-widest transition-all bg-rose-50 px-2 py-1 rounded border border-rose-100"
               >
                 Remove
@@ -2229,6 +2219,48 @@ function QueriesView({ user, onComplete }: any) {
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function AdminConfigView({ config, refresh }: any) {
+  const [newVal, setNewVal] = useState<Record<string, string>>({});
+
+  const add = async (type: string) => {
+    const value = (newVal[type] || '').trim();
+    if (!value) return;
+    const { error } = await supabase.from('config').insert({ type, value });
+    if (!error) {
+      setNewVal(prev => ({ ...prev, [type]: '' }));
+      await refresh();
+    } else {
+      alert('Failed to add: ' + error.message);
+    }
+  };
+
+  const remove = async (type: string, value: string) => {
+    if (!confirm('Remove "' + value + '"?')) return;
+    const { error } = await supabase.from('config').delete()
+      .eq('type', type).eq('value', value);
+    if (!error) {
+      await refresh();
+    } else {
+      alert('Failed to remove: ' + error.message);
+    }
+  };
+
+  return (
+    <div className="space-y-6 relative">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Configuration</h2>
+        <p className="text-slate-500 font-medium">Manage dropdown values and checklist items</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ConfigSection type="Version" title="Version Options" config={config} onAdd={add} onRemove={remove} inputVal={newVal['Version'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+        <ConfigSection type="Database" title="Database Options" config={config} onAdd={add} onRemove={remove} inputVal={newVal['Database'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+        <ConfigSection type="Checklist" title="Checklist Items" config={config} onAdd={add} onRemove={remove} inputVal={newVal['Checklist'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+        <ConfigSection type="ErrorCategory" title="Error Categories" config={config} onAdd={add} onRemove={remove} inputVal={newVal['ErrorCategory'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+      </div>
     </div>
   );
 }
