@@ -1889,10 +1889,10 @@ function AdminConfigView({ config, refresh }: any) {
         <p className="text-slate-500 font-medium">Manage dropdown values and checklist items</p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ConfigSection type="Version" title="Version Options" />
-        <ConfigSection type="Database" title="Database Options" />
-        <ConfigSection type="UDAC" title="UDAC Options" />
-        <ConfigSection type="Checklist" title="Checklist Items" />
+      <ConfigSection type="Version" title="Version Options" />
+      <ConfigSection type="Database" title="Database Options" />
+      <ConfigSection type="Checklist" title="Checklist Items" />
+      <ConfigSection type="ErrorCategory" title="Error Categories" />
       </div>
     </div>
   );
