@@ -132,13 +132,13 @@ export default function App() {
 
   // Auth State
   useEffect(() => {
-    const saved = localStorage.getItem('dexflow_user');
+    const saved = sessionStorage.getItem('dexflow_user');
     if (saved) {
       try {
         const u = JSON.parse(saved);
         setUser(u);
       } catch (e) {
-        localStorage.removeItem('dexflow_user');
+        sessionStorage.removeItem('dexflow_user');
       }
     }
   }, []);
@@ -207,7 +207,7 @@ export default function App() {
         
       if (data) {
         setUser(data as User);
-        localStorage.setItem('dexflow_user', JSON.stringify(data));
+        sessionStorage.setItem('dexflow_user', JSON.stringify(data));
       } else {
         alert('Invalid credentials or inactive account');
       }
@@ -220,8 +220,31 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('dexflow_user');
+    sessionStorage.removeItem('dexflow_user');
   };
+
+  // Inactivity Timeout (5 minutes)
+  useEffect(() => {
+    if (!user) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setUser(null);
+        sessionStorage.removeItem('dexflow_user');
+        alert('Session expired due to 5 minutes of inactivity.');
+      }, 5 * 60 * 1000);
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetTimer));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [user]);
 
   const NAV: Record<string, { id: string, label: string, icon: any }[]> = {
     Artist: [
@@ -706,8 +729,8 @@ function MyErrorsView({ user }: any) {
                     {e.appealData ? (
                       <div className="flex flex-col space-y-1">
                         <span className="truncate text-xs text-slate-500" title={e.appealData.appealDesc}>"{e.appealData.appealDesc}"</span>
-                        {e.appealData.status === 'Rejected' && e.appealData.qcRemarks && (
-                          <span className="text-xs font-bold text-rose-500">Reason: {e.appealData.qcRemarks}</span>
+                        {e.appealData.status === 'Appeal Rejected' && e.appealData.resolutionNote && (
+                          <span className="text-xs font-bold text-rose-500">Reason: {e.appealData.resolutionNote}</span>
                         )}
                       </div>
                     ) : '-'}
