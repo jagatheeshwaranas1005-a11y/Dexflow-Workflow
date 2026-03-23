@@ -124,8 +124,9 @@ const BackgroundBlobs = () => null; // Removed blobs for cleaner style
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('');
-  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [config, setConfig] = useState<AppConfig>({});
   const [artists, setArtists] = useState<{id: number, name: string, empId: string}[]>([]);
+  const [proofers, setProofers] = useState<{id: number, name: string, empId: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -162,6 +163,13 @@ export default function App() {
           .eq('role', 'Artist')
           .eq('isActive', 1);
         if (artistsData) setArtists(artistsData);
+
+        const { data: proofersData } = await supabase
+          .from('users')
+          .select('id, name, empId')
+          .eq('role', 'Proofer')
+          .eq('isActive', 1);
+        if (proofersData) setProofers(proofersData);
       };
       
       loadDefaults();
@@ -224,6 +232,8 @@ export default function App() {
     ],
     Proofer: [
       { id: 'qc', label: 'QC Audit', icon: ClipboardCheck },
+      { id: 'errors', label: 'My Errors', icon: AlertCircle },
+      { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
       { id: 'my-data', label: 'My Data', icon: FileText },
     ],
     Supervisor: [
@@ -232,8 +242,8 @@ export default function App() {
       { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
     ],
     Auditor: [
-      { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
-      { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
+      { id: 'auditor-qc', label: 'Auditor Audit', icon: ClipboardCheck },
+      { id: 'my-data', label: 'My Data', icon: FileText },
     ],
     Admin: [
       { id: 'admin-dash', label: 'Dashboard', icon: LayoutDashboard },
@@ -374,6 +384,7 @@ export default function App() {
             {activeTab === 'errors' && <MyErrorsView user={user} />}
             {activeTab === 'queries' && <QueriesView user={user} onComplete={() => showToast('Query action complete!')} />}
             {activeTab === 'qc' && <QCAuditView user={user} config={config} artists={artists} onComplete={() => showToast('Audit complete!')} />}
+            {activeTab === 'auditor-qc' && <AuditorAuditView user={user} config={config} artists={artists} proofers={proofers} onComplete={() => showToast('Auditor action complete!')} />}
             {activeTab === 'my-data' && <MyDataView user={user} />}
             {activeTab === 'appeals' && <AppealsView user={user} />}
             {activeTab === 'all-errors' && <AllErrorsView />}
@@ -618,12 +629,19 @@ function MyErrorsView({ user }: any) {
   const [appealDesc, setAppealDesc] = useState('');
 
   const loadErrors = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('audits')
       .select('*, submissions!inner(*), appeals(*)')
-      .eq('submissions.artistName', user.name)
       .neq('errorCategory', 'No Error')
       .order('auditedAt', { ascending: false });
+
+    if (user.role === 'Artist') {
+      query = query.eq('submissions.artistName', user.name);
+    } else if (user.role === 'Proofer') {
+      query = query.eq('auditedProoferName', user.name);
+    }
+    
+    const { data } = await query;
     
     if (data) {
       const formattedErrors = data.map((d: any) => ({
@@ -638,7 +656,7 @@ function MyErrorsView({ user }: any) {
     }
   };
 
-  useEffect(() => { loadErrors(); }, [user.name]);
+  useEffect(() => { loadErrors(); }, [user.name, user.role]);
 
   const handleAppeal = async () => {
     if (appealDesc.length < 20) return alert('Please provide at least 20 characters');
@@ -999,6 +1017,259 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
           </div>
 
           <Button onClick={handleSubmit} className="px-12 py-3.5 text-base">Submit Audit</Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) {
+  const [ads, setAds] = useState<Submission[]>([]);
+  const [formData, setFormData] = useState({
+    adId: '',
+    artistName: '',
+    auditedProoferName: '',
+    empId: '',
+    version: '',
+    database: '',
+    udac: '',
+    errorCategory: '',
+    remarks: '',
+    dateOverride: '',
+  });
+  const [checklist, setChecklist] = useState<Record<string, 'Yes' | 'N/A'>>({});
+
+  const loadAds = async () => {
+    const { data } = await supabase.from('submissions').select('*').order('submittedAt', { ascending: false }).limit(100);
+    if (data) setAds(data as Submission[]);
+  };
+
+  useEffect(() => { loadAds(); }, []);
+
+  const handleAdIdChange = (val: string) => {
+    const adId = val.toUpperCase();
+    const existing = ads.find(a => a.adId === adId);
+    if (existing) {
+      setFormData({
+        ...formData,
+        adId,
+        artistName: existing.artistName,
+        empId: existing.empId,
+        version: existing.version,
+        database: existing.database,
+        udac: existing.udac
+      });
+    } else {
+      setFormData({ ...formData, adId });
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.adId || !formData.errorCategory || !formData.artistName || !formData.auditedProoferName) {
+      return alert('Fill required fields (Ad ID, Artist, Proofer, Error Category)');
+    }
+    if (formData.errorCategory !== 'No Error' && !formData.remarks) return alert('Remarks required for errors');
+
+    const checkCount = Object.keys(checklist).length;
+    const reqCount = config?.ProoferChecklist?.length || 0;
+    if (checkCount !== reqCount) return alert('Please complete all checklist items');
+
+    let submissionId = ads.find(a => a.adId === formData.adId)?.id;
+
+    try {
+      if (!submissionId) {
+         const { data: newSub, error: subErr } = await supabase.from('submissions').insert({
+            artistName: formData.artistName,
+            empId: formData.empId || 'Unknown',
+            adId: formData.adId,
+            version: formData.version,
+            database: formData.database,
+            udac: formData.udac,
+            status: formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller'
+         }).select('id').single();
+         if (subErr) throw subErr;
+         submissionId = newSub.id;
+      } else {
+         const status = formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller';
+         await supabase.from('submissions').update({ status }).eq('id', submissionId);
+      }
+
+      const auditData: any = {
+        submission_id: submissionId,
+        prooferName: user.name, // Auditor's name
+        auditedProoferName: formData.auditedProoferName, // The proofer being audited
+        errorCategory: formData.errorCategory,
+        errorRemarks: formData.remarks,
+        checklistStatus: JSON.stringify(checklist)
+      };
+
+      if (formData.dateOverride) {
+        const timeString = new Date().toISOString().split('T')[1];
+        auditData.auditedAt = `${formData.dateOverride}T${timeString}`;
+      }
+
+      const { error: insertAuditError } = await supabase.from('audits').insert(auditData);
+      if (insertAuditError) throw insertAuditError;
+
+      setFormData({
+        adId: '', artistName: '', auditedProoferName: '', empId: '', version: '', database: '', udac: '', errorCategory: '', remarks: '', dateOverride: ''
+      });
+      setChecklist({});
+      loadAds();
+      onComplete();
+    } catch (err: any) {
+      alert(`Error submitting audit: ${err.message}`);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Auditor QC Audit</h2>
+        <p className="text-slate-500 mt-1 font-medium">Audit both Artists and Proofers. Select the Proofer Name to attribute errors correctly.</p>
+      </div>
+
+      <Card>
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Ad ID *</label>
+              <input 
+                value={formData.adId}
+                onChange={e => handleAdIdChange(e.target.value)}
+                list="auditor-ads"
+                placeholder="Enter Ad ID"
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
+              />
+              <datalist id="auditor-ads">
+                {ads.map(a => <option key={a.id} value={a.adId}>{a.artistName}</option>)}
+              </datalist>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Artist Name *</label>
+              <select
+                value={formData.artistName}
+                onChange={e => {
+                  const selected = artists.find((a: any) => a.name === e.target.value);
+                  setFormData({ ...formData, artistName: e.target.value, empId: selected?.empId || '' });
+                }}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
+              >
+                <option value="">Select Artist</option>
+                {artists.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Proofer Name *</label>
+              <select
+                value={formData.auditedProoferName}
+                onChange={e => setFormData({ ...formData, auditedProoferName: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
+              >
+                <option value="">Select Proofer being audited</option>
+                {proofers.map((p: any) => <option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Version *</label>
+              <select 
+                value={formData.version}
+                onChange={e => setFormData({ ...formData, version: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
+              >
+                <option value="">Select version</option>
+                {(config?.Version || []).map((v: string) => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Database *</label>
+              <select 
+                value={formData.database}
+                onChange={e => setFormData({ ...formData, database: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
+              >
+                <option value="">Select database</option>
+                {(config?.Database || []).map((v: string) => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">UDAC *</label>
+              <input 
+                value={formData.udac}
+                onChange={e => setFormData({ ...formData, udac: e.target.value.toUpperCase() })}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
+                placeholder="Enter UDAC"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Error Category *</label>
+              <select 
+                value={formData.errorCategory}
+                onChange={e => setFormData({ ...formData, errorCategory: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
+              >
+                <option value="">Select category</option>
+                {(config?.ErrorCategory || []).map((v: string) => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date Override (Optional)</label>
+              <input 
+                type="date"
+                value={formData.dateOverride}
+                onChange={e => setFormData({ ...formData, dateOverride: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-6 border-t border-slate-100">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 block">Checklist Preview *</label>
+            <div className="space-y-3">
+              {(config?.ProoferChecklist || []).map((item: string, i: number) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50">
+                  <span className="text-sm font-medium text-slate-700">{item}</span>
+                  <div className="flex gap-4">
+                    {['Yes', 'N/A'].map(opt => (
+                      <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name={`auditor_chk_${i}`}
+                          value={opt}
+                          checked={checklist[`chk${i}`] === opt}
+                          onChange={e => setChecklist({ ...checklist, [`chk${i}`]: e.target.value as any })}
+                          className="w-4 h-4 text-brand-500"
+                        />
+                        <span className="text-xs font-bold text-slate-600 uppercase">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-6 border-t border-slate-100">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Remarks *</label>
+            <textarea 
+              value={formData.remarks}
+              onChange={e => setFormData({ ...formData, remarks: e.target.value })}
+              className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium min-h-[100px]"
+              placeholder="Enter audit remarks..."
+            />
+          </div>
+
+          <div className="pt-6 border-t border-slate-100 flex justify-end">
+            <Button onClick={handleSubmit} className="px-12 py-4 text-base">Submit Auditor Audit</Button>
+          </div>
         </div>
       </Card>
     </div>
@@ -1642,6 +1913,7 @@ function AdminReportsView() {
 function AdminUsersView() {
   const [users, setUsers] = useState<User[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -1693,6 +1965,29 @@ function AdminUsersView() {
     }
   };
 
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    const form = e.target as HTMLFormElement;
+    const payload = {
+      name: (form.elements.namedItem('name') as HTMLInputElement).value,
+      username: (form.elements.namedItem('username') as HTMLInputElement).value,
+      role: (form.elements.namedItem('role') as HTMLSelectElement).value,
+      empId: (form.elements.namedItem('empId') as HTMLInputElement).value,
+      process: (form.elements.namedItem('process') as HTMLInputElement).value,
+      designation: (form.elements.namedItem('designation') as HTMLInputElement).value,
+      isActive: parseInt((form.elements.namedItem('isActive') as HTMLSelectElement).value)
+    };
+
+    const { error } = await supabase.from('users').update(payload).eq('id', selectedUser.id);
+    if (!error) {
+      setIsEditOpen(false);
+      loadUsers();
+    } else {
+      alert(error.message);
+    }
+  };
+
   return (
     <div className="space-y-6 relative">
       <div className="flex items-center justify-between">
@@ -1736,6 +2031,20 @@ function AdminUsersView() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex gap-2 justify-end">
+                      <Button 
+                        variant="secondary" 
+                        className="px-3 py-1.5 text-xs font-bold" 
+                        onClick={() => { setSelectedUser(u); setIsEditOpen(true); }}
+                      >
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        className="px-3 py-1.5 text-xs font-bold" 
+                        onClick={() => { setSelectedUser(u); setIsEditOpen(true); }}
+                      >
+                        Edit
+                      </Button>
                       <Button 
                         variant="secondary" 
                         className="px-3 py-1.5 text-xs font-bold" 
@@ -1807,6 +2116,7 @@ function AdminUsersView() {
               >
                 <option>Artist</option>
                 <option>Proofer</option>
+                <option>Auditor</option>
                 <option>Supervisor</option>
                 <option>Admin</option>
               </select>
@@ -1835,6 +2145,95 @@ function AdminUsersView() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit User">
+        {selectedUser && (
+          <form onSubmit={handleUpdateUser} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name *</label>
+                <input 
+                  name="name" 
+                  defaultValue={selectedUser.name}
+                  required 
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Emp ID *</label>
+                <input 
+                  name="empId" 
+                  defaultValue={selectedUser.empId}
+                  required 
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Username *</label>
+                <input 
+                  name="username" 
+                  defaultValue={selectedUser.username}
+                  required 
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Role</label>
+                <select 
+                  name="role" 
+                  defaultValue={selectedUser.role}
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
+                >
+                  <option>Artist</option>
+                  <option>Proofer</option>
+                  <option>Auditor</option>
+                  <option>Supervisor</option>
+                  <option>Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Process</label>
+                <input 
+                  name="process" 
+                  defaultValue={selectedUser.process}
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Designation</label>
+                <input 
+                  name="designation" 
+                  defaultValue={selectedUser.designation}
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Status</label>
+              <select 
+                name="isActive" 
+                defaultValue={selectedUser.isActive.toString()}
+                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
+              >
+                <option value="1">Active</option>
+                <option value="0">Inactive / Soft Deleted</option>
+              </select>
+            </div>
+            <div className="pt-4 flex justify-end gap-3">
+              <Button variant="secondary" type="button" onClick={() => setIsEditOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       <Modal 
@@ -1917,6 +2316,7 @@ function ConfigSection({ type, title, config, onAdd, onRemove, inputVal, onInput
 function QueriesView({ user, onComplete }: any) {
   const [queries, setQueries] = useState<Query[]>([]);
   const [formData, setFormData] = useState({
+    version: '',
     database: '',
     adId: '',
     acquiredDate: new Date().toISOString().split('T')[0],
@@ -1970,6 +2370,7 @@ function QueriesView({ user, onComplete }: any) {
     });
     if (!error) {
       setFormData({
+        version: '',
         database: '',
         adId: '',
         acquiredDate: new Date().toISOString().split('T')[0],

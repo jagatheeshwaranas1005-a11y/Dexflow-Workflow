@@ -2,7 +2,7 @@ export interface User {
   id: number;
   name: string;
   username: string;
-  role: 'Artist' | 'Proofer' | 'Supervisor' | 'Admin';
+  role: 'Artist' | 'Proofer' | 'Auditor' | 'Supervisor' | 'Admin';
   empId: string;
   process?: string;
   designation?: string;
@@ -47,12 +47,16 @@ export interface Audit {
   id: number;
   submission_id: number;
   prooferName: string;
+  auditedProoferName?: string;
   errorCategory: string;
   errorRemarks: string;
   checklistStatus: string;
   auditedAt: string;
   status?: string;
   submissions?: Submission;
+  // UI-only joined fields
+  adId?: string;
+  artistName?: string;
 }
 
 export interface Appeal {
@@ -63,17 +67,22 @@ export interface Appeal {
   appealedAt: string;
   resolutionNote?: string;
   audits?: Audit;
+  // UI-only joined fields
+  adId?: string;
+  artistName?: string;
 }
 
 export interface AppConfig {
-  Version: string[];
-  Database: string[];
-  UDAC: string[];
-  Checklist: string[];
+  Version?: string[];
+  Database?: string[];
+  UDAC?: string[];
+  Checklist?: string[];
+  ProoferChecklist?: string[];
   QueryCode?: string[];
   QueryCategory?: string[];
   ErrorCategory?: string[];
   Settings?: string[];
+  [key: string]: string[] | undefined;
 }
 
 export interface Stats {
