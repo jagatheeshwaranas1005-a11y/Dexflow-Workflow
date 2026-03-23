@@ -1313,13 +1313,14 @@ function MyDataView({ user }: any) {
                 {user.role === 'Artist' ? (
                   <>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Version</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">UDAC</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
                   </>
                 ) : (
                   <>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Artist</th>
+                    {user.role === 'Auditor' && <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proofer</th>}
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Error Category</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Audited At</th>
                   </>
@@ -1341,6 +1342,7 @@ function MyDataView({ user }: any) {
                   ) : (
                     <>
                       <td className="px-6 py-4 text-sm font-medium text-slate-600">{row.artistName}</td>
+                      {user.role === 'Auditor' && <td className="px-6 py-4 text-sm font-medium text-slate-600">{row.auditedProoferName || '-'}</td>}
                       <td className="px-6 py-4">
                         <Badge color={row.errorCategory === 'No Error' ? 'green' : 'red'}>{row.errorCategory}</Badge>
                       </td>
@@ -1453,12 +1455,19 @@ function AppealsView({ user }: any) {
                   <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate" title={a.appealDesc}>{a.appealDesc}</td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(a.appealedAt).toLocaleString()}</td>
                   <td className="px-4 py-4">
-                    {a.status === 'Pending' ? (
+                    {a.status === 'Pending' && isAdmin ? (
                       <div className="flex gap-2">
                         <Button variant="success" className="px-3 py-1.5 text-xs" onClick={() => handleApprove(a.id)}>Approve</Button>
                         <Button variant="danger" className="px-3 py-1.5 text-xs" onClick={() => openRejectModal(a.id)}>Reject</Button>
                       </div>
-                    ) : <StatusBadge status={a.status} />}
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <StatusBadge status={a.status} />
+                        {a.status === 'Appeal Rejected' && a.resolutionNote && (
+                          <span className="text-[10px] text-rose-500 font-medium">Reason: {a.resolutionNote}</span>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -2031,13 +2040,6 @@ function AdminUsersView() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex gap-2 justify-end">
-                      <Button 
-                        variant="secondary" 
-                        className="px-3 py-1.5 text-xs font-bold" 
-                        onClick={() => { setSelectedUser(u); setIsEditOpen(true); }}
-                      >
-                        Edit
-                      </Button>
                       <Button 
                         variant="secondary" 
                         className="px-3 py-1.5 text-xs font-bold" 
@@ -2662,6 +2664,13 @@ function AdminConfigView({ config, refresh }: any) {
   const add = async (type: string) => {
     const value = (newVal[type] || '').trim();
     if (!value) return;
+
+    const existing = config?.[type]?.find(v => v.toLowerCase() === value.toLowerCase());
+    if (existing) {
+      alert('This value already exists!');
+      return;
+    }
+
     const { error } = await supabase.from('config').insert({ type, value });
     if (!error) {
       setNewVal(prev => ({ ...prev, [type]: '' }));
