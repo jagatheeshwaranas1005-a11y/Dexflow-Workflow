@@ -233,7 +233,6 @@ export default function App() {
     Proofer: [
       { id: 'qc', label: 'QC Audit', icon: ClipboardCheck },
       { id: 'errors', label: 'My Errors', icon: AlertCircle },
-      { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
       { id: 'my-data', label: 'My Data', icon: FileText },
     ],
     Supervisor: [
@@ -243,6 +242,7 @@ export default function App() {
     ],
     Auditor: [
       { id: 'auditor-qc', label: 'Auditor Audit', icon: ClipboardCheck },
+      { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
       { id: 'my-data', label: 'My Data', icon: FileText },
     ],
     Admin: [
@@ -1372,12 +1372,15 @@ function AppealsView({ user }: any) {
   const isAdmin = user.role === 'Admin';
 
   const loadAppeals = async () => {
-    // Admin and Auditor see all appeals; Supervisor sees only Pending ones to review
+    // Admin sees all; Auditor sees only their audits; Supervisor sees only Pending ones to review
     let query = supabase
       .from('appeals')
       .select('*, audits!inner(*, submissions!inner(*))')
       .order('appealedAt', { ascending: false });
-    if (!isAdmin && user.role !== 'Auditor') {
+
+    if (user.role === 'Auditor') {
+      query = query.eq('audits.prooferName', user.name);
+    } else if (!isAdmin) {
       query = query.eq('status', 'Pending');
     }
     const { data } = await query;
