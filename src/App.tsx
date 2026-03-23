@@ -224,13 +224,16 @@ export default function App() {
     ],
     Proofer: [
       { id: 'qc', label: 'QC Audit', icon: ClipboardCheck },
-      { id: 'queries', label: 'Queries', icon: MessageSquare },
       { id: 'my-data', label: 'My Data', icon: FileText },
     ],
     Supervisor: [
       { id: 'queries', label: 'Queries', icon: MessageSquare },
       { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
       { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
+    ],
+    Auditor: [
+      { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
+      { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
     ],
     Admin: [
       { id: 'admin-dash', label: 'Dashboard', icon: LayoutDashboard },
@@ -437,7 +440,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const checkCount = Object.keys(checklist).length;
-    const reqCount = config?.Checklist?.length || 0;
+    const reqCount = config?.ArtistChecklist?.length || 0;
     if (checkCount !== reqCount) return alert('Please complete the checklist');
 
     try {
@@ -546,7 +549,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
           <div className="pt-8 border-t border-slate-100">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 ml-1">Pre-submission Checklist</h4>
             <div className="space-y-3">
-              {config?.Checklist?.map((item: string, i: number) => (
+              {config?.ArtistChecklist?.map((item: string, i: number) => (
                 <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
                   <span className="text-sm font-semibold text-slate-700 mb-3 md:mb-0">{item}</span>
                   <div className="flex gap-4">
@@ -617,7 +620,7 @@ function MyErrorsView({ user }: any) {
   const loadErrors = async () => {
     const { data } = await supabase
       .from('audits')
-      .select('*, submissions!inner(*)')
+      .select('*, submissions!inner(*), appeals(*)')
       .eq('submissions.artistName', user.name)
       .neq('errorCategory', 'No Error')
       .order('auditedAt', { ascending: false });
@@ -628,7 +631,8 @@ function MyErrorsView({ user }: any) {
         adId: d.submissions?.adId,
         artistName: d.submissions?.artistName,
         status: d.submissions?.status,
-        submission_id: d.submissions?.id
+        submission_id: d.submissions?.id,
+        appealData: d.appeals?.[0]
       }));
       setErrors(formattedErrors);
     }
@@ -668,17 +672,28 @@ function MyErrorsView({ user }: any) {
                 <th className="px-4 py-3">Ad ID</th>
                 <th className="px-4 py-3">Error</th>
                 <th className="px-4 py-3">Remarks</th>
+                <th className="px-4 py-3">Appeal Info</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Flagged</th>
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {errors.map(e => (
+              {errors.map((e: any) => (
                 <tr key={e.id} className="hover:bg-slate-50 transition-all group">
                   <td className="px-4 py-4 font-bold text-slate-900">{e.adId}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate">{e.errorRemarks || '-'}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium max-w-xs">
+                    {e.appealData ? (
+                      <div className="flex flex-col space-y-1">
+                        <span className="truncate text-xs text-slate-500" title={e.appealData.appealDesc}>"{e.appealData.appealDesc}"</span>
+                        {e.appealData.status === 'Rejected' && e.appealData.qcRemarks && (
+                          <span className="text-xs font-bold text-rose-500">Reason: {e.appealData.qcRemarks}</span>
+                        )}
+                      </div>
+                    ) : '-'}
+                  </td>
                   <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(e.auditedAt).toLocaleString()}</td>
                   <td className="px-4 py-4">
@@ -691,7 +706,7 @@ function MyErrorsView({ user }: any) {
                 </tr>
               ))}
               {errors.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium italic">No errors found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium italic">No errors found</td></tr>
               )}
             </tbody>
           </table>
@@ -740,6 +755,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
     udac: '',
     errorCategory: '',
     remarks: '',
+    dateOverride: '',
   });
   const [checklist, setChecklist] = useState<Record<string, 'Yes' | 'N/A'>>({});
 
@@ -778,35 +794,50 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
     if (formData.errorCategory !== 'No Error' && !formData.remarks) return alert('Remarks required for errors');
 
     const checkCount = Object.keys(checklist).length;
-    const reqCount = config?.Checklist?.length || 0;
+    const reqCount = config?.ProoferChecklist?.length || 0;
     if (checkCount !== reqCount) return alert('Please complete all checklist items');
 
-    const submission = ads.find(a => a.adId === formData.adId);
-    if (!submission) return alert('Submission not found for this Ad ID.');
+    let submissionId = ads.find(a => a.adId === formData.adId)?.id;
 
     try {
-      const { error: insertAuditError } = await supabase.from('audits').insert({
-        submission_id: submission.id,
+      // If no submission exists, the Proofer is entering it manually. Create a stub submission.
+      if (!submissionId) {
+         const { data: newSub, error: subErr } = await supabase.from('submissions').insert({
+            artistName: formData.artistName,
+            empId: formData.empId || 'Unknown',
+            adId: formData.adId,
+            version: formData.version,
+            database: formData.database,
+            udac: formData.udac,
+            status: formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller'
+         }).select('id').single();
+         
+         if (subErr) throw subErr;
+         submissionId = newSub.id;
+      } else {
+         const status = formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller';
+         await supabase.from('submissions').update({ status }).eq('id', submissionId);
+      }
+
+      const auditData: any = {
+        submission_id: submissionId,
         prooferName: user.name,
         errorCategory: formData.errorCategory,
         errorRemarks: formData.remarks,
         checklistStatus: JSON.stringify(checklist)
-      });
+      };
 
+      if (formData.dateOverride) {
+        // Append current time to the override date to make it a valid timestamp
+        const timeString = new Date().toISOString().split('T')[1];
+        auditData.auditedAt = `${formData.dateOverride}T${timeString}`;
+      }
+
+      const { error: insertAuditError } = await supabase.from('audits').insert(auditData);
       if (insertAuditError) throw insertAuditError;
 
-      const status = formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller';
-      await supabase.from('submissions').update({ status }).eq('adId', formData.adId);
-
       setFormData({
-        adId: '',
-        artistName: '',
-        empId: '',
-        version: '',
-        database: '',
-        udac: '',
-        errorCategory: '',
-        remarks: '',
+        adId: '', artistName: '', empId: '', version: '', database: '', udac: '', errorCategory: '', remarks: '', dateOverride: ''
       });
       setChecklist({});
       loadAds();
@@ -920,12 +951,21 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
                 {(config?.ErrorCategory || []).map((v: string) => <option key={v}>{v}</option>)}
               </select>
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date Override (Optional)</label>
+              <input 
+                type="date"
+                value={formData.dateOverride}
+                onChange={e => setFormData({ ...formData, dateOverride: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
+              />
+            </div>
           </div>
 
           <div className="space-y-4 pt-6 border-t border-slate-100">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 block">Proofer Checklist *</label>
             <div className="space-y-3">
-              {(config?.Checklist || []).map((item: string, i: number) => (
+              {(config?.ProoferChecklist || []).map((item: string, i: number) => (
                 <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50 transition-all hover:border-brand-200">
                   <span className="text-sm font-medium text-slate-700 mb-2 md:mb-0">{item}</span>
                   <div className="flex gap-4">
@@ -1059,12 +1099,12 @@ function AppealsView({ user }: any) {
   const isAdmin = user.role === 'Admin';
 
   const loadAppeals = async () => {
-    // Admin sees all appeals; Supervisor sees only Pending ones to review
+    // Admin and Auditor see all appeals; Supervisor sees only Pending ones to review
     let query = supabase
       .from('appeals')
       .select('*, audits!inner(*, submissions!inner(*))')
       .order('appealedAt', { ascending: false });
-    if (!isAdmin) {
+    if (!isAdmin && user.role !== 'Auditor') {
       query = query.eq('status', 'Pending');
     }
     const { data } = await query;
@@ -1636,8 +1676,9 @@ function AdminUsersView() {
   };
 
   const handleDeleteUser = async (u: User) => {
-    if (!confirm(`Are you sure you want to permanently delete user ${u.name}?`)) return;
-    const { error } = await supabase.from('users').delete().eq('id', u.id);
+    if (!confirm(`Are you sure you want to delete user ${u.name}? This will deactivate their account.`)) return;
+    // Use soft delete to avoid FK constraint violations on submissions/audits/queries
+    const { error } = await supabase.from('users').update({ isActive: 0 }).eq('id', u.id);
     if (!error) loadUsers();
     else alert(error.message);
   };
@@ -1871,21 +1912,6 @@ function ConfigSection({ type, title, config, onAdd, onRemove, inputVal, onInput
       </div>
     </Card>
   );
-
-  return (
-    <div className="space-y-6 relative">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Configuration</h2>
-        <p className="text-slate-500 font-medium">Manage dropdown values and checklist items</p>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <ConfigSection type="Version" title="Version Options" />
-      <ConfigSection type="Database" title="Database Options" />
-      <ConfigSection type="Checklist" title="Checklist Items" />
-      <ConfigSection type="ErrorCategory" title="Error Categories" />
-      </div>
-    </div>
-  );
 }
 
 function QueriesView({ user, onComplete }: any) {
@@ -2061,22 +2087,28 @@ function QueriesView({ user, onComplete }: any) {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Code</label>
-                <input 
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Code *</label>
+                <select 
                   value={formData.queryCode}
                   onChange={e => setFormData({ ...formData, queryCode: e.target.value })}
-                  placeholder="Enter Query Code"
-                  className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
-                />
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
+                >
+                  <option value="">Select code</option>
+                  {(config?.QueryCode || []).map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Category</label>
-                <input 
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Category *</label>
+                <select 
                   value={formData.queryCategory}
                   onChange={e => setFormData({ ...formData, queryCategory: e.target.value })}
-                  placeholder="Enter Category"
-                  className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
-                />
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
+                >
+                  <option value="">Select category</option>
+                  {(config?.QueryCategory || []).map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
             </div>
             <div className="space-y-1">
@@ -2258,8 +2290,11 @@ function AdminConfigView({ config, refresh }: any) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ConfigSection type="Version" title="Version Options" config={config} onAdd={add} onRemove={remove} inputVal={newVal['Version'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
         <ConfigSection type="Database" title="Database Options" config={config} onAdd={add} onRemove={remove} inputVal={newVal['Database'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
-        <ConfigSection type="Checklist" title="Checklist Items" config={config} onAdd={add} onRemove={remove} inputVal={newVal['Checklist'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+        <ConfigSection type="ArtistChecklist" title="Artist Checklist" config={config} onAdd={add} onRemove={remove} inputVal={newVal['ArtistChecklist'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+        <ConfigSection type="ProoferChecklist" title="Proofer Checklist" config={config} onAdd={add} onRemove={remove} inputVal={newVal['ProoferChecklist'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
         <ConfigSection type="ErrorCategory" title="Error Categories" config={config} onAdd={add} onRemove={remove} inputVal={newVal['ErrorCategory'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+        <ConfigSection type="QueryCode" title="Query Codes" config={config} onAdd={add} onRemove={remove} inputVal={newVal['QueryCode'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+        <ConfigSection type="QueryCategory" title="Query Categories" config={config} onAdd={add} onRemove={remove} inputVal={newVal['QueryCategory'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
       </div>
     </div>
   );

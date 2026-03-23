@@ -70,6 +70,10 @@ export interface AppConfig {
   Database: string[];
   UDAC: string[];
   Checklist: string[];
+  QueryCode?: string[];
+  QueryCategory?: string[];
+  ErrorCategory?: string[];
+  Settings?: string[];
 }
 
 export interface Stats {
