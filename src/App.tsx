@@ -50,9 +50,12 @@ const StatusBadge = ({ status }: { status: string }) => {
   const map: Record<string, string> = {
     'Submitted': 'blue',
     'Quality Controller': 'amber',
+    'Audit Error': 'red',
     'Appeal Raised': 'amber',
+    'Audit Appeal': 'amber',
     'Appeal Accepted': 'green',
     'Appeal Rejected': 'red',
+    'Audit Appeal-Reject': 'red',
     'Approved': 'green',
     'Rejected': 'red',
     'Pending': 'amber'
@@ -232,8 +235,7 @@ export default function App() {
       timeoutId = setTimeout(() => {
         setUser(null);
         sessionStorage.removeItem('dexflow_user');
-        alert('Session expired due to 5 minutes of inactivity.');
-      }, 5 * 60 * 1000);
+      }, 30 * 60 * 1000);
     };
 
     const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
@@ -260,7 +262,6 @@ export default function App() {
     ],
     Supervisor: [
       { id: 'queries', label: 'Queries', icon: MessageSquare },
-      { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
       { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
     ],
     Auditor: [
@@ -272,7 +273,7 @@ export default function App() {
       { id: 'admin-dash', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'admin-reports', label: 'Reports', icon: BarChart3 },
       { id: 'queries', label: 'Queries', icon: MessageSquare },
-      { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
+      { id: 'audit-report', label: 'Audit Report', icon: AlertCircle },
       { id: 'appeals', label: 'All Appeals', icon: CheckCircle2 },
     ]
   };
@@ -409,9 +410,10 @@ export default function App() {
             {activeTab === 'qc' && <QCAuditView user={user} config={config} artists={artists} onComplete={() => showToast('Audit complete!')} />}
             {activeTab === 'auditor-qc' && <AuditorAuditView user={user} config={config} artists={artists} proofers={proofers} onComplete={() => showToast('Auditor action complete!')} />}
             {activeTab === 'my-data' && <MyDataView user={user} />}
-            {activeTab === 'appeals' && <AppealsView user={user} />}
-            {activeTab === 'all-errors' && <AllErrorsView />}
-            {activeTab === 'admin-dash' && <AdminDashView />}
+            { activeTab === 'appeals' && <AppealsView user={user} /> }
+            { activeTab === 'all-errors' && <AllErrorsView /> }
+            { activeTab === 'audit-report' && <AuditReportView /> }
+            { activeTab === 'admin-dash' && <AdminDashView /> }
             {activeTab === 'admin-reports' && <AdminReportsView />}
             {activeTab === 'admin-users' && <AdminUsersView />}
             {activeTab === 'admin-config' && <AdminConfigView config={config} refresh={async () => {
@@ -691,7 +693,9 @@ function MyErrorsView({ user }: any) {
     });
 
     if (!error) {
-      await supabase.from('submissions').update({ status: 'Appeal Raised' }).eq('id', (selectedError as any)?.submission_id);
+      const isAuditorError = !!selectedError?.auditedProoferName;
+      const newStatus = isAuditorError ? 'Audit Appeal' : 'Appeal Raised';
+      await supabase.from('submissions').update({ status: newStatus }).eq('id', (selectedError as any)?.submission_id);
       setIsAppealOpen(false);
       setAppealDesc('');
       loadErrors();
@@ -1091,7 +1095,10 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
     if (!formData.adId || !formData.errorCategory || !formData.artistName || !formData.auditedProoferName) {
       return alert('Fill required fields (Ad ID, Artist, Proofer, Error Category)');
     }
-    if (formData.errorCategory !== 'No Error' && !formData.remarks) return alert('Remarks required for errors');
+    if (formData.errorCategory === 'No Error') {
+      return alert('Auditors can only enter ads with errors. For ads without errors, please use the standard QC process or skip.');
+    }
+    if (!formData.remarks) return alert('Remarks required for errors');
 
     const checkCount = Object.keys(checklist).length;
     const reqCount = config?.ProoferChecklist?.length || 0;
@@ -1108,13 +1115,12 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
             version: formData.version,
             database: formData.database,
             udac: formData.udac,
-            status: formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller'
+            status: 'Audit Error'
          }).select('id').single();
          if (subErr) throw subErr;
          submissionId = newSub.id;
       } else {
-         const status = formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller';
-         await supabase.from('submissions').update({ status }).eq('id', submissionId);
+         await supabase.from('submissions').update({ status: 'Audit Error' }).eq('id', submissionId);
       }
 
       const auditData: any = {
@@ -1291,7 +1297,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
           </div>
 
           <div className="pt-6 border-t border-slate-100 flex justify-end">
-            <Button onClick={handleSubmit} className="px-12 py-4 text-base">Submit Auditor Audit</Button>
+            <Button onClick={handleSubmit} className="px-12 py-4 text-base">Submit</Button>
           </div>
         </div>
       </Card>
@@ -1391,6 +1397,8 @@ function AppealsView({ user }: any) {
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [rejectModal, setRejectModal] = useState<{ open: boolean; appealId: number | null }>({ open: false, appealId: null });
   const [rejectNote, setRejectNote] = useState('');
+  const [approveModal, setApproveModal] = useState<{ open: boolean; appealId: number | null }>({ open: false, appealId: null });
+  const [approveNote, setApproveNote] = useState('');
 
   const isAdmin = user.role === 'Admin';
 
@@ -1421,12 +1429,19 @@ function AppealsView({ user }: any) {
 
   useEffect(() => { loadAppeals(); }, [user.role]);
 
-  const handleApprove = async (id: number) => {
+  const openApproveModal = (id: number) => {
+    setApproveNote('');
+    setApproveModal({ open: true, appealId: id });
+  };
+
+  const handleApprove = async () => {
+    if (!approveModal.appealId) return;
     const status = 'Appeal Accepted';
-    const { error } = await supabase.from('appeals').update({ status, resolutionNote: '' }).eq('id', id);
+    const { error } = await supabase.from('appeals').update({ status, resolutionNote: approveNote }).eq('id', approveModal.appealId);
     if (!error) {
-      const appeal = appeals.find(a => a.id === id);
+      const appeal = appeals.find(a => a.id === approveModal.appealId);
       if (appeal) await supabase.from('submissions').update({ status }).eq('id', (appeal as any).submission_id);
+      setApproveModal({ open: false, appealId: null });
       loadAppeals();
     }
   };
@@ -1438,10 +1453,12 @@ function AppealsView({ user }: any) {
 
   const handleReject = async () => {
     if (!rejectModal.appealId) return;
-    const status = 'Appeal Rejected';
+    const appeal = appeals.find(a => a.id === rejectModal.appealId);
+    const isAuditorError = !!(appeal as any)?.audits?.auditedProoferName;
+    const status = isAuditorError ? 'Audit Appeal-Reject' : 'Appeal Rejected';
+    
     const { error } = await supabase.from('appeals').update({ status, resolutionNote: rejectNote }).eq('id', rejectModal.appealId);
     if (!error) {
-      const appeal = appeals.find(a => a.id === rejectModal.appealId);
       if (appeal) await supabase.from('submissions').update({ status }).eq('id', (appeal as any).submission_id);
       setRejectModal({ open: false, appealId: null });
       loadAppeals();
@@ -1481,9 +1498,9 @@ function AppealsView({ user }: any) {
                   <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate" title={a.appealDesc}>{a.appealDesc}</td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(a.appealedAt).toLocaleString()}</td>
                   <td className="px-4 py-4">
-                    {a.status === 'Pending' && isAdmin ? (
+                    {a.status === 'Pending' && (isAdmin || user.role === 'Supervisor') ? (
                       <div className="flex gap-2">
-                        <Button variant="success" className="px-3 py-1.5 text-xs" onClick={() => handleApprove(a.id)}>Approve</Button>
+                        <Button variant="success" className="px-3 py-1.5 text-xs" onClick={() => openApproveModal(a.id)}>Approve</Button>
                         <Button variant="danger" className="px-3 py-1.5 text-xs" onClick={() => openRejectModal(a.id)}>Reject</Button>
                       </div>
                     ) : (
@@ -1504,6 +1521,36 @@ function AppealsView({ user }: any) {
           </table>
         </div>
       </Card>
+
+      {/* Approve Appeal Modal */}
+      <Modal
+        isOpen={approveModal.open}
+        onClose={() => setApproveModal({ open: false, appealId: null })}
+        title="Approve Appeal"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setApproveModal({ open: false, appealId: null })}>Cancel</Button>
+            <Button variant="success" onClick={handleApprove}>Confirm Approval</Button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+            <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Approval</p>
+            <p className="text-sm font-medium text-slate-700">This will remove the error from the artist's record and mark the appeal as accepted.</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Approval Reason / Resolution Note *</label>
+            <textarea
+              value={approveNote}
+              onChange={e => setApproveNote(e.target.value)}
+              placeholder="Explain the resolution or why the appeal is being accepted..."
+              className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none min-h-[100px] font-medium text-slate-700"
+              required
+            />
+          </div>
+        </div>
+      </Modal>
 
       {/* Reject Appeal Modal */}
       <Modal
@@ -1542,6 +1589,7 @@ function AllErrorsView() {
 
   useEffect(() => {
     const fetchAllErrors = async () => {
+      // For Supervisor this might still just be "All Errors"
       const { data } = await supabase.from('audits').select('*, submissions!inner(*)').neq('errorCategory', 'No Error').order('auditedAt', { ascending: false });
       if (data) {
         setErrors(data.map((d: any) => ({ 
@@ -1588,6 +1636,68 @@ function AllErrorsView() {
               ))}
               {errors.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium italic">No errors recorded</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function AuditReportView() {
+  const [errors, setErrors] = useState<Audit[]>([]);
+
+  useEffect(() => {
+    const fetchAuditErrors = async () => {
+      const { data } = await supabase.from('audits').select('*, submissions!inner(*)').neq('errorCategory', 'No Error').not('auditedProoferName', 'is', null).order('auditedAt', { ascending: false });
+      if (data) {
+        setErrors(data.map((d: any) => ({ 
+          ...d, 
+          status: d.submissions?.status,
+          adId: d.submissions?.adId,
+          artistName: d.submissions?.artistName
+        })));
+      }
+    };
+    fetchAuditErrors();
+  }, []);
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Audit Report</h2>
+        <p className="text-slate-500 mt-1 font-medium">Errors logged specifically by Auditors</p>
+      </div>
+
+      <Card>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                <th className="px-4 py-3">Ad ID</th>
+                <th className="px-4 py-3">Artist</th>
+                <th className="px-4 py-3">Proofer</th>
+                <th className="px-4 py-3">Auditor</th>
+                <th className="px-4 py-3">Audit Error</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {errors.map(e => (
+                <tr key={e.id} className="hover:bg-slate-50 transition-all group">
+                  <td className="px-4 py-4 font-bold text-slate-900">{e.adId}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.artistName}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.prooferName}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
+                  <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
+                  <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(e.auditedAt).toLocaleString()}</td>
+                </tr>
+              ))}
+              {errors.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium italic">No auditor errors recorded</td></tr>
               )}
             </tbody>
           </table>
@@ -2350,7 +2460,6 @@ function QueriesView({ user, onComplete }: any) {
     acquiredDate: new Date().toISOString().split('T')[0],
     udac: '',
     daysToExtract: 0,
-    queryCode: '',
     queryCategory: '',
     queryDetails: ''
   });
@@ -2404,7 +2513,6 @@ function QueriesView({ user, onComplete }: any) {
         acquiredDate: new Date().toISOString().split('T')[0],
         udac: '',
         daysToExtract: 0,
-        queryCode: '',
         queryCategory: '',
         queryDetails: ''
       });
@@ -2515,18 +2623,7 @@ function QueriesView({ user, onComplete }: any) {
                   className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Code *</label>
-                <select 
-                  value={formData.queryCode}
-                  onChange={e => setFormData({ ...formData, queryCode: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
-                >
-                  <option value="">Select code</option>
-                  {(config?.QueryCode || []).map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
+
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Category *</label>
                 <select 
@@ -2555,79 +2652,115 @@ function QueriesView({ user, onComplete }: any) {
         </Card>
       )}
 
-      <Card title={user.role === 'Supervisor' || user.role === 'Admin' ? "All Queries" : "My Queries"}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                <th className="px-4 py-3">#</th>
-                <th className="px-4 py-3">Database</th>
-                <th className="px-4 py-3">Ad ID</th>
-                <th className="px-4 py-3">Version</th>
-                <th className="px-4 py-3">Acquired</th>
-                <th className="px-4 py-3">UDAC</th>
-                <th className="px-4 py-3">By</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Days</th>
-                <th className="px-4 py-3">Code</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Details</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Validated</th>
-                <th className="px-4 py-3">Raised</th>
-                <th className="px-4 py-3">Remarks</th>
-                {user.role === 'Supervisor' && <th className="px-4 py-3 text-right">Action</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {queries.map((q, idx) => (
-                <tr key={q.id} className="hover:bg-slate-50 transition-all group">
-                  <td className="px-4 py-4 text-slate-400 text-xs font-medium">{idx + 1}</td>
-                  <td className="px-4 py-4 font-semibold text-slate-700">{q.database}</td>
-                  <td className="px-4 py-4 font-bold text-slate-900">{q.adId}</td>
-                  <td className="px-4 py-4 text-slate-600 text-xs">{q.version}</td>
-                  <td className="px-4 py-4 text-slate-600 text-xs">{q.acquiredDate}</td>
-                  <td className="px-4 py-4 text-slate-600 font-medium">{q.udac}</td>
-                  <td className="px-4 py-4 font-bold text-slate-900">{q.queriedBy}</td>
-                  <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(q.queriedDate).toLocaleDateString()}</td>
-                  <td className="px-4 py-4 text-slate-600">{q.daysToExtract}</td>
-                  <td className="px-4 py-4 text-slate-600">{q.queryCode}</td>
-                  <td className="px-4 py-4 text-slate-600">{q.queryCategory}</td>
-                  <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate">{q.queryDetails}</td>
-                  <td className="px-4 py-4">
-                    <Badge color={q.status === 'Resolved' ? 'green' : 'amber'}>
-                      {q.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-4">
-                    <Badge color={q.validated === 'Valid' ? 'green' : q.validated === 'Not Valid' ? 'red' : 'slate'}>
-                      {q.validated}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-4">
-                    <Badge color={q.raised === 'Raised' ? 'blue' : 'slate'}>
-                      {q.raised}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-4 text-slate-500 text-xs italic">{q.remarks || '-'}</td>
-                  {user.role === 'Supervisor' && (
-                    <td className="px-4 py-4 text-right">
-                      {q.status === 'Pending' && (
+      <div className="space-y-8">
+        <Card title={user.role === 'Supervisor' || user.role === 'Admin' ? "Pending Queries" : "My Pending Queries"}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                  <th className="px-4 py-3">Idx</th>
+                  <th className="px-4 py-3">Database</th>
+                  <th className="px-4 py-3">Ad ID</th>
+                  <th className="px-4 py-3">Version</th>
+                  <th className="px-4 py-3">Acquired</th>
+                  <th className="px-4 py-3">UDAC</th>
+                  <th className="px-4 py-3">By</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Days</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Details</th>
+                  <th className="px-4 py-3">Status</th>
+                  {user.role === 'Supervisor' && <th className="px-4 py-3 text-right">Action</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {queries.filter(q => q.status === 'Pending').map((q, idx) => (
+                  <tr key={q.id} className="hover:bg-slate-50 transition-all group">
+                    <td className="px-4 py-4 text-slate-400 text-xs font-medium">{idx + 1}</td>
+                    <td className="px-4 py-4 font-semibold text-slate-700">{q.database}</td>
+                    <td className="px-4 py-4 font-bold text-slate-900">{q.adId}</td>
+                    <td className="px-4 py-4 text-slate-600 text-xs">{q.version}</td>
+                    <td className="px-4 py-4 text-slate-600 text-xs">{q.acquiredDate}</td>
+                    <td className="px-4 py-4 text-slate-600 font-medium">{q.udac}</td>
+                    <td className="px-4 py-4 font-bold text-slate-900">{q.queriedBy}</td>
+                    <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(q.queriedDate).toLocaleDateString()}</td>
+                    <td className="px-4 py-4 text-slate-600">{q.daysToExtract}</td>
+                    <td className="px-4 py-4 text-slate-600">{q.queryCategory}</td>
+                    <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate">{q.queryDetails}</td>
+                    <td className="px-4 py-4">
+                      <Badge color="amber">{q.status}</Badge>
+                    </td>
+                    {user.role === 'Supervisor' && (
+                      <td className="px-4 py-4 text-right">
                         <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => { setSelectedQuery(q); setIsApproveOpen(true); }}>
                           Review
                         </Button>
-                      )}
-                    </td>
-                  )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {queries.filter(q => q.status === 'Pending').length === 0 && (
+                  <tr><td colSpan={user.role === 'Supervisor' ? 13 : 12} className="px-4 py-12 text-center text-slate-400 font-medium italic">No pending queries found</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card title={user.role === 'Supervisor' || user.role === 'Admin' ? "Handled Queries" : "My Handled Queries"}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                  <th className="px-4 py-3">Idx</th>
+                  <th className="px-4 py-3">Database</th>
+                  <th className="px-4 py-3">Ad ID</th>
+                  <th className="px-4 py-3">Version</th>
+                  <th className="px-4 py-3">UDAC</th>
+                  <th className="px-4 py-3">By</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Details</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Validated</th>
+                  <th className="px-4 py-3">Raised</th>
+                  <th className="px-4 py-3">Remarks</th>
                 </tr>
-              ))}
-              {queries.length === 0 && (
-                <tr><td colSpan={user.role === 'Supervisor' ? 16 : 15} className="px-4 py-12 text-center text-slate-400 font-medium italic">No queries found</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {queries.filter(q => q.status === 'Resolved').map((q, idx) => (
+                  <tr key={q.id} className="hover:bg-slate-50 transition-all group">
+                    <td className="px-4 py-4 text-slate-400 text-xs font-medium">{idx + 1}</td>
+                    <td className="px-4 py-4 font-semibold text-slate-700">{q.database}</td>
+                    <td className="px-4 py-4 font-bold text-slate-900">{q.adId}</td>
+                    <td className="px-4 py-4 text-slate-600 text-xs">{q.version}</td>
+                    <td className="px-4 py-4 text-slate-600 font-medium">{q.udac}</td>
+                    <td className="px-4 py-4 font-bold text-slate-900">{q.queriedBy}</td>
+                    <td className="px-4 py-4 text-slate-600">{q.queryCategory}</td>
+                    <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate">{q.queryDetails}</td>
+                    <td className="px-4 py-4">
+                      <Badge color="green">{q.status}</Badge>
+                    </td>
+                    <td className="px-4 py-4">
+                      <Badge color={q.validated === 'Valid' ? 'green' : q.validated === 'Not Valid' ? 'red' : 'slate'}>
+                        {q.validated}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-4">
+                      <Badge color={q.raised === 'Raised' ? 'blue' : 'slate'}>
+                        {q.raised}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-4 text-slate-500 text-xs italic">{q.remarks || '-'}</td>
+                  </tr>
+                ))}
+                {queries.filter(q => q.status === 'Resolved').length === 0 && (
+                  <tr><td colSpan={12} className="px-4 py-12 text-center text-slate-400 font-medium italic">No handled queries found</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
 
       <Modal 
         isOpen={isApproveOpen} 
@@ -2729,7 +2862,7 @@ function AdminConfigView({ config, refresh }: any) {
         <ConfigSection type="ArtistChecklist" title="Artist Checklist" config={config} onAdd={add} onRemove={remove} inputVal={newVal['ArtistChecklist'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
         <ConfigSection type="ProoferChecklist" title="Proofer Checklist" config={config} onAdd={add} onRemove={remove} inputVal={newVal['ProoferChecklist'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
         <ConfigSection type="ErrorCategory" title="Error Categories" config={config} onAdd={add} onRemove={remove} inputVal={newVal['ErrorCategory'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
-        <ConfigSection type="QueryCode" title="Query Codes" config={config} onAdd={add} onRemove={remove} inputVal={newVal['QueryCode'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
+
         <ConfigSection type="QueryCategory" title="Query Categories" config={config} onAdd={add} onRemove={remove} inputVal={newVal['QueryCategory'] || ''} onInputChange={(t, v) => setNewVal(prev => ({ ...prev, [t]: v }))} />
       </div>
     </div>
