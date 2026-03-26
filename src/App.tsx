@@ -263,6 +263,7 @@ export default function App() {
     Supervisor: [
       { id: 'queries', label: 'Queries', icon: MessageSquare },
       { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
+      { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
     ],
     Auditor: [
       { id: 'auditor-qc', label: 'Auditor Audit', icon: ClipboardCheck },
@@ -614,7 +615,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
 
       <Card title="Today's Submissions">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="px-4 py-3">Ad ID</th>
@@ -711,7 +712,7 @@ function MyErrorsView({ user }: any) {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="px-4 py-3">Ad ID</th>
@@ -733,7 +734,7 @@ function MyErrorsView({ user }: any) {
                     {e.appealData ? (
                       <div className="flex flex-col space-y-1">
                         <span className="truncate text-xs text-slate-500" title={e.appealData.appealDesc}>"{e.appealData.appealDesc}"</span>
-                        {e.appealData.status === 'Appeal Rejected' && e.appealData.resolutionNote && (
+                        {(e.appealData.status === 'Appeal Rejected' || e.appealData.status === 'Audit Appeal-Reject') && e.appealData.resolutionNote && (
                           <span className="text-xs font-bold text-rose-500">Reason: {e.appealData.resolutionNote}</span>
                         )}
                       </div>
@@ -742,7 +743,7 @@ function MyErrorsView({ user }: any) {
                   <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(e.auditedAt).toLocaleString()}</td>
                   <td className="px-4 py-4">
-                    {e.status === 'Quality Controller' ? (
+                    {e.status === 'Quality Controller' || e.status === 'Audit Error' ? (
                       <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => { setSelectedError(e); setIsAppealOpen(true); }}>
                         Appeal
                       </Button>
@@ -1476,7 +1477,7 @@ function AppealsView({ user }: any) {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="px-4 py-3">Ad ID</th>
@@ -1506,7 +1507,7 @@ function AppealsView({ user }: any) {
                     ) : (
                       <div className="flex flex-col gap-1">
                         <StatusBadge status={a.status} />
-                        {a.status === 'Appeal Rejected' && a.resolutionNote && (
+                        {(a.status === 'Appeal Rejected' || a.status === 'Audit Appeal-Reject') && a.resolutionNote && (
                           <span className="text-[10px] text-rose-500 font-medium">Reason: {a.resolutionNote}</span>
                         )}
                       </div>
@@ -1612,7 +1613,7 @@ function AllErrorsView() {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="px-4 py-3">Ad ID</th>
@@ -1672,7 +1673,7 @@ function AuditReportView() {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="px-4 py-3">Ad ID</th>
@@ -1840,7 +1841,7 @@ function AdminDashView() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card title="Errors by Category">
           <div className="overflow-hidden rounded-xl border border-slate-100">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left whitespace-nowrap">
               <thead>
                 <tr className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   <th className="px-4 py-3">Category</th>
@@ -2147,7 +2148,7 @@ function AdminUsersView() {
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 border-b border-slate-100">
                 <th className="px-6 py-4">Name</th>
@@ -2655,7 +2656,7 @@ function QueriesView({ user, onComplete }: any) {
       <div className="space-y-8">
         <Card title={user.role === 'Supervisor' || user.role === 'Admin' ? "Pending Queries" : "My Pending Queries"}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left whitespace-nowrap">
               <thead>
                 <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                   <th className="px-4 py-3">Idx</th>
@@ -2709,7 +2710,7 @@ function QueriesView({ user, onComplete }: any) {
 
         <Card title={user.role === 'Supervisor' || user.role === 'Admin' ? "Handled Queries" : "My Handled Queries"}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left whitespace-nowrap">
               <thead>
                 <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                   <th className="px-4 py-3">Idx</th>
@@ -2718,6 +2719,7 @@ function QueriesView({ user, onComplete }: any) {
                   <th className="px-4 py-3">Version</th>
                   <th className="px-4 py-3">UDAC</th>
                   <th className="px-4 py-3">By</th>
+                  <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Category</th>
                   <th className="px-4 py-3">Details</th>
                   <th className="px-4 py-3">Status</th>
@@ -2735,6 +2737,7 @@ function QueriesView({ user, onComplete }: any) {
                     <td className="px-4 py-4 text-slate-600 text-xs">{q.version}</td>
                     <td className="px-4 py-4 text-slate-600 font-medium">{q.udac}</td>
                     <td className="px-4 py-4 font-bold text-slate-900">{q.queriedBy}</td>
+                    <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(q.queriedDate).toLocaleDateString()}</td>
                     <td className="px-4 py-4 text-slate-600">{q.queryCategory}</td>
                     <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate">{q.queryDetails}</td>
                     <td className="px-4 py-4">
@@ -2754,7 +2757,7 @@ function QueriesView({ user, onComplete }: any) {
                   </tr>
                 ))}
                 {queries.filter(q => q.status === 'Resolved').length === 0 && (
-                  <tr><td colSpan={12} className="px-4 py-12 text-center text-slate-400 font-medium italic">No handled queries found</td></tr>
+                  <tr><td colSpan={13} className="px-4 py-12 text-center text-slate-400 font-medium italic">No handled queries found</td></tr>
                 )}
               </tbody>
             </table>
