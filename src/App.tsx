@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { 
-  LayoutDashboard, 
-  FilePlus, 
-  AlertCircle, 
-  CheckCircle2, 
-  Users, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  FilePlus,
+  AlertCircle,
+  CheckCircle2,
+  Users,
+  Settings,
+  LogOut,
   ClipboardCheck,
   BarChart3,
   FileText,
@@ -17,13 +17,13 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   Legend
 } from 'recharts';
@@ -82,7 +82,7 @@ const Button = ({ children, variant = 'primary', className = "", ...props }: any
     danger: 'bg-rose-500 text-white hover:bg-rose-600 shadow-sm',
   };
   return (
-    <button 
+    <button
       className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 border border-transparent active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
       {...props}
     >
@@ -95,14 +95,14 @@ const Modal = ({ isOpen, onClose, title, children, footer }: any) => (
   <AnimatePresence>
     {isOpen && (
       <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" 
+          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
         />
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -128,8 +128,8 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('');
   const [config, setConfig] = useState<AppConfig>({});
-  const [artists, setArtists] = useState<{id: number, name: string, empId: string}[]>([]);
-  const [proofers, setProofers] = useState<{id: number, name: string, empId: string}[]>([]);
+  const [artists, setArtists] = useState<{ id: number, name: string, empId: string }[]>([]);
+  const [proofers, setProofers] = useState<{ id: number, name: string, empId: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isResetOpen, setIsResetOpen] = useState(false);
@@ -176,7 +176,7 @@ export default function App() {
           .eq('isActive', 1);
         if (proofersData) setProofers(proofersData);
       };
-      
+
       loadDefaults();
     }
   }, [user]);
@@ -209,7 +209,7 @@ export default function App() {
         .eq('password', password)
         .eq('isActive', 1)
         .single();
-        
+
       if (data) {
         setUser(data as User);
         sessionStorage.setItem('dexflow_user', JSON.stringify(data));
@@ -231,7 +231,7 @@ export default function App() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetData.empId || !resetData.currentPassword || !resetData.newPassword) return alert('All fields required');
-    
+
     setLoading(true);
     try {
       const { data: userToReset } = await supabase
@@ -300,7 +300,8 @@ export default function App() {
     ],
     Supervisor: [
       { id: 'queries', label: 'Queries', icon: MessageSquare },
-      { id: 'all-errors', label: 'All Errors', icon: AlertCircle },
+      { id: 'all-errors', label: 'Errors', icon: AlertCircle },
+      { id: 'audit-report', label: 'Audit Errors', icon: ClipboardCheck },
       { id: 'appeals', label: 'Appeals', icon: CheckCircle2 },
     ],
     Auditor: [
@@ -312,7 +313,8 @@ export default function App() {
       { id: 'admin-dash', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'admin-reports', label: 'Reports', icon: BarChart3 },
       { id: 'queries', label: 'Queries', icon: MessageSquare },
-      { id: 'audit-report', label: 'Audit Report', icon: AlertCircle },
+      { id: 'all-errors', label: 'Errors', icon: AlertCircle },
+      { id: 'audit-report', label: 'Audit Errors', icon: ClipboardCheck },
       { id: 'appeals', label: 'All Appeals', icon: CheckCircle2 },
     ]
   };
@@ -324,11 +326,11 @@ export default function App() {
 
   if (!user) {
     return (
-      <div 
+      <div
         className="min-h-screen flex items-center justify-end p-8 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: 'url("/login-bg.png")' }}
       >
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           className="w-full max-w-[320px] mr-[6%] lg:mr-[10%] animate-soft-float"
@@ -341,20 +343,20 @@ export default function App() {
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Username</label>
-                <input 
-                  name="username" 
-                  type="text" 
-                  required 
+                <input
+                  name="username"
+                  type="text"
+                  required
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50/50 border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium text-sm"
                   placeholder="Enter username"
                 />
               </div>
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Password</label>
-                <input 
-                  name="password" 
-                  type="password" 
-                  required 
+                <input
+                  name="password"
+                  type="password"
+                  required
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50/50 border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium text-sm"
                   placeholder="Enter password"
                 />
@@ -363,11 +365,11 @@ export default function App() {
                 {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Sign In'}
               </Button>
             </form>
-            
+
             <div className="text-center mt-6">
               <p className="text-slate-500 text-sm font-medium">
-                Forgot password? 
-                <button 
+                Forgot password?
+                <button
                   onClick={() => setIsResetOpen(true)}
                   className="ml-1 text-brand-600 font-bold hover:text-brand-700 hover:underline transition-all"
                 >
@@ -392,8 +394,8 @@ export default function App() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Employee ID *</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={resetData.empId}
                 onChange={e => setResetData({ ...resetData, empId: e.target.value })}
                 placeholder="Enter your Employee ID"
@@ -402,8 +404,8 @@ export default function App() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Current Password *</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={resetData.currentPassword}
                 onChange={e => setResetData({ ...resetData, currentPassword: e.target.value })}
                 placeholder="Enter current password"
@@ -412,8 +414,8 @@ export default function App() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">New Password *</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={resetData.newPassword}
                 onChange={e => setResetData({ ...resetData, newPassword: e.target.value })}
                 placeholder="Enter new password"
@@ -445,7 +447,7 @@ export default function App() {
                 <div className="bg-white border border-slate-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden p-1">
                   <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">System Settings</div>
                   {ADMIN_SETTINGS.map(s => (
-                    <button 
+                    <button
                       key={s.id}
                       onClick={() => setActiveTab(s.id)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-500 rounded-lg transition-all"
@@ -471,11 +473,10 @@ export default function App() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-brand-500 text-white shadow-md' 
-                  : 'text-slate-500 hover:text-brand-500 hover:bg-brand-50'
-              }`}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id
+                ? 'bg-brand-500 text-white shadow-md'
+                : 'text-slate-500 hover:text-brand-500 hover:bg-brand-50'
+                }`}
             >
               <tab.icon size={18} />
               {tab.label}
@@ -500,22 +501,22 @@ export default function App() {
             {activeTab === 'qc' && <QCAuditView user={user} config={config} artists={artists} onComplete={() => showToast('Audit complete!')} />}
             {activeTab === 'auditor-qc' && <AuditorAuditView user={user} config={config} artists={artists} proofers={proofers} onComplete={() => showToast('Auditor action complete!')} />}
             {activeTab === 'my-data' && <MyDataView user={user} />}
-            { activeTab === 'appeals' && <AppealsView user={user} /> }
-            { activeTab === 'all-errors' && <AllErrorsView /> }
-            { activeTab === 'audit-report' && <AuditReportView /> }
-            { activeTab === 'admin-dash' && <AdminDashView /> }
+            {activeTab === 'appeals' && <AppealsView user={user} />}
+            {activeTab === 'all-errors' && <AllErrorsView />}
+            {activeTab === 'audit-report' && <AuditReportView />}
+            {activeTab === 'admin-dash' && <AdminDashView />}
             {activeTab === 'admin-reports' && <AdminReportsView />}
             {activeTab === 'admin-users' && <AdminUsersView />}
             {activeTab === 'admin-config' && <AdminConfigView config={config} refresh={async () => {
-                const { data: configData } = await supabase.from('config').select('type, value');
-                if (configData) {
-                  const formattedConfig: Record<string, string[]> = {};
-                  configData.forEach(row => {
-                    if (!formattedConfig[row.type]) formattedConfig[row.type] = [];
-                    formattedConfig[row.type].push(row.value);
-                  });
-                  setConfig(formattedConfig);
-                }
+              const { data: configData } = await supabase.from('config').select('type, value');
+              if (configData) {
+                const formattedConfig: Record<string, string[]> = {};
+                configData.forEach(row => {
+                  if (!formattedConfig[row.type]) formattedConfig[row.type] = [];
+                  formattedConfig[row.type].push(row.value);
+                });
+                setConfig(formattedConfig);
+              }
             }} />}
           </motion.div>
         </AnimatePresence>
@@ -524,7 +525,7 @@ export default function App() {
       {/* Toast */}
       <AnimatePresence>
         {toast && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -606,7 +607,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Artist Name *</label>
-              <input 
+              <input
                 value={user.name}
                 readOnly
                 className="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 font-medium text-slate-500"
@@ -614,7 +615,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Employee ID *</label>
-              <input 
+              <input
                 value={user.empId}
                 readOnly
                 className="w-full px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 font-medium text-slate-500"
@@ -622,7 +623,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Ad ID *</label>
-              <input 
+              <input
                 value={formData.adId}
                 onChange={e => setFormData({ ...formData, adId: e.target.value.toUpperCase() })}
                 placeholder="e.g. S9783035103356"
@@ -632,7 +633,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Version *</label>
-              <select 
+              <select
                 value={formData.version}
                 onChange={e => setFormData({ ...formData, version: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -644,7 +645,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Database *</label>
-              <select 
+              <select
                 value={formData.database}
                 onChange={e => setFormData({ ...formData, database: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -657,7 +658,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">UDAC *</label>
               <div className="relative">
-                <input 
+                <input
                   value={formData.udac}
                   onChange={e => setFormData({ ...formData, udac: e.target.value.toUpperCase() })}
                   list="udac-options"
@@ -681,8 +682,8 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
                   <div className="flex gap-4">
                     {['Yes', 'N/A'].map(opt => (
                       <label key={opt} className="flex items-center gap-2 cursor-pointer hover:bg-slate-200/50 p-1.5 rounded transition-all">
-                        <input 
-                          type="radio" 
+                        <input
+                          type="radio"
                           name={`chk_${i}`}
                           value={opt}
                           checked={checklist[`chk${i}`] === opt}
@@ -752,12 +753,12 @@ function MyErrorsView({ user }: any) {
 
     if (user.role === 'Artist') {
       query = query.eq('submissions.artistName', user.name);
-    } else if (user.role === 'Proofer') {
+    } else {
       query = query.eq('auditedProoferName', user.name);
     }
-    
+
     const { data } = await query;
-    
+
     if (data) {
       const formattedErrors = data.map((d: any) => ({
         ...d,
@@ -775,7 +776,7 @@ function MyErrorsView({ user }: any) {
 
   const handleAppeal = async () => {
     if (appealDesc.length < 20) return alert('Please provide at least 20 characters');
-    
+
     const { error } = await supabase.from('appeals').insert({
       audit_id: selectedError?.id,
       appealDesc,
@@ -791,12 +792,11 @@ function MyErrorsView({ user }: any) {
       loadErrors();
     }
   };
-
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-bold text-slate-900 font-display tracking-tight">My Errors & Appeals</h2>
-        <p className="text-slate-500 mt-1 font-medium">Errors flagged on your ads. Click Appeal on any Quality Controller error to contest it.</p>
+        <p className="text-slate-500 mt-1 font-medium">Errors flagged on your ads. Click Appeal to contest any error.</p>
       </div>
 
       <Card>
@@ -852,9 +852,9 @@ function MyErrorsView({ user }: any) {
         </div>
       </Card>
 
-      <Modal 
-        isOpen={isAppealOpen} 
-        onClose={() => setIsAppealOpen(false)} 
+      <Modal
+        isOpen={isAppealOpen}
+        onClose={() => setIsAppealOpen(false)}
         title="Raise Appeal"
         footer={(
           <>
@@ -870,7 +870,7 @@ function MyErrorsView({ user }: any) {
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Appeal Description *</label>
-            <textarea 
+            <textarea
               value={appealDesc}
               onChange={e => setAppealDesc(e.target.value)}
               placeholder="Explain why this error should be removed (min 20 chars)"
@@ -941,21 +941,21 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
     try {
       // If no submission exists, the Proofer is entering it manually. Create a stub submission.
       if (!submissionId) {
-         const { data: newSub, error: subErr } = await supabase.from('submissions').insert({
-            artistName: formData.artistName,
-            empId: formData.empId || 'Unknown',
-            adId: formData.adId,
-            version: formData.version,
-            database: formData.database,
-            udac: formData.udac,
-            status: formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller'
-         }).select('id').single();
-         
-         if (subErr) throw subErr;
-         submissionId = newSub.id;
+        const { data: newSub, error: subErr } = await supabase.from('submissions').insert({
+          artistName: formData.artistName,
+          empId: formData.empId || 'Unknown',
+          adId: formData.adId,
+          version: formData.version,
+          database: formData.database,
+          udac: formData.udac,
+          status: formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller'
+        }).select('id').single();
+
+        if (subErr) throw subErr;
+        submissionId = newSub.id;
       } else {
-         const status = formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller';
-         await supabase.from('submissions').update({ status }).eq('id', submissionId);
+        const status = formData.errorCategory === 'No Error' ? 'Approved' : 'Quality Controller';
+        await supabase.from('submissions').update({ status }).eq('id', submissionId);
       }
 
       const auditData: any = {
@@ -1000,7 +1000,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Ad ID *</label>
               <div className="relative">
-                <input 
+                <input
                   value={formData.adId}
                   onChange={e => handleAdIdChange(e.target.value)}
                   placeholder="Enter or select Ad ID"
@@ -1030,7 +1030,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Version *</label>
-              <select 
+              <select
                 value={formData.version}
                 onChange={e => setFormData({ ...formData, version: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -1042,7 +1042,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Database *</label>
-              <select 
+              <select
                 value={formData.database}
                 onChange={e => setFormData({ ...formData, database: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -1054,7 +1054,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">UDAC *</label>
-              <input 
+              <input
                 value={formData.udac}
                 onChange={e => setFormData({ ...formData, udac: e.target.value.toUpperCase() })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
@@ -1067,7 +1067,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Error Category *</label>
-              <select 
+              <select
                 value={formData.errorCategory}
                 onChange={e => setFormData({ ...formData, errorCategory: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -1079,7 +1079,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date Override (Optional)</label>
-              <input 
+              <input
                 type="date"
                 value={formData.dateOverride}
                 onChange={e => setFormData({ ...formData, dateOverride: e.target.value })}
@@ -1097,8 +1097,8 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
                   <div className="flex gap-4">
                     {['Yes', 'N/A'].map(opt => (
                       <label key={opt} className="flex items-center gap-2 cursor-pointer hover:bg-slate-200/50 p-1 rounded transition-all">
-                        <input 
-                          type="radio" 
+                        <input
+                          type="radio"
                           name={`qc_chk_${i}`}
                           value={opt}
                           checked={checklist[`chk${i}`] === opt}
@@ -1116,7 +1116,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Notes / Remarks {formData.errorCategory !== 'No Error' ? '*' : ''}</label>
-            <textarea 
+            <textarea
               value={formData.remarks}
               onChange={e => setFormData({ ...formData, remarks: e.target.value })}
               placeholder="Enter any remarks or error details..."
@@ -1188,19 +1188,19 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
 
     try {
       if (!submissionId) {
-         const { data: newSub, error: subErr } = await supabase.from('submissions').insert({
-            artistName: formData.artistName,
-            empId: formData.empId || 'Unknown',
-            adId: formData.adId,
-            version: formData.version,
-            database: formData.database,
-            udac: formData.udac,
-            status: submissionStatus // Use the determined status
-         }).select('id').single();
-         if (subErr) throw subErr;
-         submissionId = newSub.id;
+        const { data: newSub, error: subErr } = await supabase.from('submissions').insert({
+          artistName: formData.artistName,
+          empId: formData.empId || 'Unknown',
+          adId: formData.adId,
+          version: formData.version,
+          database: formData.database,
+          udac: formData.udac,
+          status: submissionStatus // Use the determined status
+        }).select('id').single();
+        if (subErr) throw subErr;
+        submissionId = newSub.id;
       } else {
-         await supabase.from('submissions').update({ status: submissionStatus }).eq('id', submissionId);
+        await supabase.from('submissions').update({ status: submissionStatus }).eq('id', submissionId);
       }
 
       const auditData: any = {
@@ -1243,7 +1243,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Ad ID *</label>
-              <input 
+              <input
                 value={formData.adId}
                 onChange={e => handleAdIdChange(e.target.value)}
                 placeholder="Enter Ad ID"
@@ -1282,7 +1282,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Version *</label>
-              <select 
+              <select
                 value={formData.version}
                 onChange={e => setFormData({ ...formData, version: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -1293,7 +1293,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Database *</label>
-              <select 
+              <select
                 value={formData.database}
                 onChange={e => setFormData({ ...formData, database: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -1304,7 +1304,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">UDAC *</label>
-              <input 
+              <input
                 value={formData.udac}
                 onChange={e => setFormData({ ...formData, udac: e.target.value.toUpperCase() })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
@@ -1316,7 +1316,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Error Category *</label>
-              <select 
+              <select
                 value={formData.errorCategory}
                 onChange={e => setFormData({ ...formData, errorCategory: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
@@ -1327,7 +1327,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Date Override (Optional)</label>
-              <input 
+              <input
                 type="date"
                 value={formData.dateOverride}
                 onChange={e => setFormData({ ...formData, dateOverride: e.target.value })}
@@ -1345,8 +1345,8 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
                   <div className="flex gap-4">
                     {['Yes', 'N/A'].map(opt => (
                       <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="radio" 
+                        <input
+                          type="radio"
                           name={`auditor_chk_${i}`}
                           value={opt}
                           checked={checklist[`chk${i}`] === opt}
@@ -1364,7 +1364,7 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
 
           <div className="space-y-2 pt-6 border-t border-slate-100">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Remarks *</label>
-            <textarea 
+            <textarea
               value={formData.remarks}
               onChange={e => setFormData({ ...formData, remarks: e.target.value })}
               className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium min-h-[100px]"
@@ -1481,7 +1481,7 @@ function AppealsView({ user }: any) {
   const isAdmin = user.role === 'Admin';
 
   const loadAppeals = async () => {
-    // Admin sees all; Auditor sees only their audits; Supervisor sees only Pending ones to review
+    // Admin sees all; Auditor sees only their audits; Supervisor sees all (to review pending + see history)
     let query = supabase
       .from('appeals')
       .select('*, audits!inner(*, submissions!inner(*))')
@@ -1489,9 +1489,8 @@ function AppealsView({ user }: any) {
 
     if (user.role === 'Auditor') {
       query = query.eq('audits.prooferName', user.name);
-    } else if (!isAdmin) {
-      query = query.eq('status', 'Pending');
     }
+    // Supervisor and Admin both see all appeals
     const { data } = await query;
     if (data) {
       const formattedAppeals = data.map((d: any) => ({
@@ -1515,10 +1514,10 @@ function AppealsView({ user }: any) {
   const handleApprove = async () => {
     if (!approveModal.appealId) return;
     const status = 'Appeal Accepted';
-    const { error } = await supabase.from('appeals').update({ 
-      status, 
+    const { error } = await supabase.from('appeals').update({
+      status,
       resolutionNote: approveNote,
-      resolvedBy: user.name 
+      resolvedBy: user.name
     }).eq('id', approveModal.appealId);
     if (!error) {
       const appeal = appeals.find(a => a.id === approveModal.appealId);
@@ -1538,11 +1537,11 @@ function AppealsView({ user }: any) {
     const appeal = appeals.find(a => a.id === rejectModal.appealId);
     const isAuditorError = !!(appeal as any)?.audits?.auditedProoferName;
     const status = isAuditorError ? 'Audit Appeal-Reject' : 'Appeal Rejected';
-    
-    const { error } = await supabase.from('appeals').update({ 
-      status, 
+
+    const { error } = await supabase.from('appeals').update({
+      status,
       resolutionNote: rejectNote,
-      resolvedBy: user.name 
+      resolvedBy: user.name
     }).eq('id', rejectModal.appealId);
     if (!error) {
       if (appeal) await supabase.from('submissions').update({ status }).eq('id', (appeal as any).submission_id);
@@ -1583,7 +1582,7 @@ function AppealsView({ user }: any) {
                     <Badge color="red">{(a as any).errorCategory || 'Error'}</Badge>
                   </td>
                   <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate" title={a.appealDesc}>{a.appealDesc}</td>
-                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(a.appealedAt).toLocaleString()}</td>
+                  <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(a.appealedAt).toLocaleString()}</td>
                   <td className="px-4 py-4 text-slate-600 font-bold">{a.resolvedBy || '-'}</td>
                   <td className="px-4 py-4">
                     {a.status === 'Pending' && (isAdmin || user.role === 'Supervisor') ? (
@@ -1677,11 +1676,20 @@ function AllErrorsView() {
 
   useEffect(() => {
     const fetchAllErrors = async () => {
-      // For Supervisor this might still just be "All Errors"
-      const { data } = await supabase.from('audits').select('*, submissions!inner(*)').neq('errorCategory', 'No Error').order('auditedAt', { ascending: false });
+      // Proofer-marked errors (auditedProoferName is null), excluding Appeal Accepted
+      const { data } = await supabase
+        .from('audits')
+        .select('*, submissions!inner(*), appeals(*)')
+        .neq('errorCategory', 'No Error')
+        .is('auditedProoferName', null)
+        .order('auditedAt', { ascending: false });
       if (data) {
-        setErrors(data.map((d: any) => ({ 
-          ...d, 
+        const filtered = data.filter((d: any) => {
+          const appeal = d.appeals?.[0];
+          return !appeal || appeal.status !== 'Appeal Accepted';
+        });
+        setErrors(filtered.map((d: any) => ({
+          ...d,
           status: d.submissions?.status,
           adId: d.submissions?.adId,
           artistName: d.submissions?.artistName
@@ -1694,8 +1702,8 @@ function AllErrorsView() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-slate-900 font-display tracking-tight">All Errors</h2>
-        <p className="text-slate-500 mt-1 font-medium">Complete error log across all artists</p>
+        <h2 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Errors</h2>
+        <p className="text-slate-500 mt-1 font-medium">Errors marked by Proofers (excluding accepted appeals)</p>
       </div>
 
       <Card>
@@ -1706,7 +1714,6 @@ function AllErrorsView() {
                 <th className="px-4 py-3">Ad ID</th>
                 <th className="px-4 py-3">Artist</th>
                 <th className="px-4 py-3">Proofer</th>
-                <th className="px-4 py-3">Auditor</th>
                 <th className="px-4 py-3">Error</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Date</th>
@@ -1717,8 +1724,7 @@ function AllErrorsView() {
                 <tr key={e.id} className="hover:bg-slate-50 transition-all group">
                   <td className="px-4 py-4 font-bold text-slate-900">{e.adId}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.artistName}</td>
-                  <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName || e.prooferName}</td>
-                  <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName ? e.prooferName : '-'}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.prooferName}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
                   <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(e.auditedAt).toLocaleString()}</td>
@@ -1740,10 +1746,20 @@ function AuditReportView() {
 
   useEffect(() => {
     const fetchAuditErrors = async () => {
-      const { data } = await supabase.from('audits').select('*, submissions!inner(*)').neq('errorCategory', 'No Error').not('auditedProoferName', 'is', null).order('auditedAt', { ascending: false });
+      // Auditor-marked errors (auditedProoferName is not null), excluding Appeal Accepted
+      const { data } = await supabase
+        .from('audits')
+        .select('*, submissions!inner(*), appeals(*)')
+        .neq('errorCategory', 'No Error')
+        .not('auditedProoferName', 'is', null)
+        .order('auditedAt', { ascending: false });
       if (data) {
-        setErrors(data.map((d: any) => ({ 
-          ...d, 
+        const filtered = data.filter((d: any) => {
+          const appeal = d.appeals?.[0];
+          return !appeal || appeal.status !== 'Appeal Accepted';
+        });
+        setErrors(filtered.map((d: any) => ({
+          ...d,
           status: d.submissions?.status,
           adId: d.submissions?.adId,
           artistName: d.submissions?.artistName
@@ -1756,8 +1772,8 @@ function AuditReportView() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Audit Report</h2>
-        <p className="text-slate-500 mt-1 font-medium">Errors logged specifically by Auditors</p>
+        <h2 className="text-3xl font-bold text-slate-900 font-display tracking-tight">Audit Errors</h2>
+        <p className="text-slate-500 mt-1 font-medium">Errors logged by Auditors (excluding accepted appeals)</p>
       </div>
 
       <Card>
@@ -1787,7 +1803,7 @@ function AuditReportView() {
                 </tr>
               ))}
               {errors.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium italic">No auditor errors recorded</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium italic">No audit errors recorded</td></tr>
               )}
             </tbody>
           </table>
@@ -1807,7 +1823,7 @@ function AdminDashView() {
     const loadStats = async () => {
       let startStr = new Date().toISOString();
       let endStr = new Date().toISOString();
-      
+
       const now = new Date();
       if (timeRange === 'prev-week') {
         const start = new Date(now);
@@ -1857,11 +1873,10 @@ function AdminDashView() {
             <button
               key={range.id}
               onClick={() => setTimeRange(range.id)}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                timeRange === range.id 
-                  ? 'bg-brand-500 text-white shadow-md' 
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${timeRange === range.id
+                ? 'bg-brand-500 text-white shadow-md'
+                : 'text-slate-500 hover:bg-slate-50'
+                }`}
             >
               {range.label}
             </button>
@@ -1963,11 +1978,10 @@ function AdminDashView() {
                   <button
                     key={view.id}
                     onClick={() => setMainMetric(view.id as any)}
-                    className={`px-4 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-                      mainMetric === view.id 
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
-                        : 'text-slate-400 hover:text-slate-600'
-                    }`}
+                    className={`px-4 py-1.5 rounded-md text-[10px] font-bold transition-all ${mainMetric === view.id
+                      ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                      : 'text-slate-400 hover:text-slate-600'
+                      }`}
                   >
                     {view.label}
                   </button>
@@ -1976,11 +1990,10 @@ function AdminDashView() {
 
               <button
                 onClick={() => setShowErrors(!showErrors)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
-                  showErrors 
-                    ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-sm' 
-                    : 'bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-500'
-                }`}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${showErrors
+                  ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-500'
+                  }`}
               >
                 <AlertCircle size={14} />
                 Show Errors
@@ -1991,45 +2004,45 @@ function AdminDashView() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stats.history}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fontSize: 10, fill: '#94a3b8' }}
                     tickFormatter={(val) => val.split('-').slice(1).join('/')}
                   />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fontSize: 10, fill: '#94a3b8' }}
                     domain={[0, maxVal]}
                   />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                     labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
                   />
-                  <Legend 
-                    verticalAlign="top" 
-                    align="right" 
+                  <Legend
+                    verticalAlign="top"
+                    align="right"
                     height={36}
                     iconType="circle"
                     wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}
                   />
-                  <Line 
+                  <Line
                     name={mainMetric === 'submissions' ? 'Artist Submissions' : 'Proofer Audits'}
-                    type="monotone" 
-                    dataKey={mainMetric} 
-                    stroke={mainMetric === 'submissions' ? '#f97316' : '#0ea5e9'} 
+                    type="monotone"
+                    dataKey={mainMetric}
+                    stroke={mainMetric === 'submissions' ? '#f97316' : '#0ea5e9'}
                     strokeWidth={3}
                     dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
                     activeDot={{ r: 6, strokeWidth: 0 }}
                   />
                   {showErrors && (
-                    <Line 
+                    <Line
                       name="Errors Marked"
-                      type="monotone" 
-                      dataKey="errors" 
-                      stroke="#f43f5e" 
+                      type="monotone"
+                      dataKey="errors"
+                      stroke="#f43f5e"
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       dot={{ r: 3, strokeWidth: 2, fill: '#fff' }}
@@ -2051,16 +2064,57 @@ function AdminReportsView() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
-// Exclude from direct implementation, just relying on frontend exporting logic. Note that since they just need to download CSV from what they already have, we can do it directly in frontend. 
+  // Exclude from direct implementation, just relying on frontend exporting logic. Note that since they just need to download CSV from what they already have, we can do it directly in frontend. 
   /* (Skipped handleExport frontend replacement, user will rely on standard table export or we just keep dummy if unused. Usually they use local json-to-csv) */
-// Replacing handleExport with direct supabase queries.
+  // Replacing handleExport with direct supabase queries.
   const handleExport = async (type: string) => {
-    let query = supabase.from(type).select('*');
+    let query;
     
-    if (period === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      // simplified filter logic
+    if (type === 'audits') {
+      // QC Audit Log = Errors/Audits marked by proofers
+      query = supabase.from('audits').select('*').is('auditedProoferName', null);
+    } else if (type === 'errors') {
+      // Error List = Errors marked by auditors
+      query = supabase.from('audits').select('*').not('auditedProoferName', 'is', null);
+    } else {
+      query = supabase.from(type).select('*');
     }
+
+    if (period === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString();
+      if (type === 'submissions') query = query.gte('submittedAt', todayStr);
+      else if (type === 'audits' || type === 'errors') query = query.gte('auditedAt', todayStr);
+      else if (type === 'appeals') query = query.gte('appealedAt', todayStr);
+      else if (type === 'queries') query = query.gte('queriedDate', todayStr);
+    } else if (period === 'week') {
+      const week = new Date();
+      week.setDate(week.getDate() - 7);
+      const weekStr = week.toISOString();
+      if (type === 'submissions') query = query.gte('submittedAt', weekStr);
+      else if (type === 'audits' || type === 'errors') query = query.gte('auditedAt', weekStr);
+      else if (type === 'appeals') query = query.gte('appealedAt', weekStr);
+      else if (type === 'queries') query = query.gte('queriedDate', weekStr);
+    } else if (period === 'month') {
+      const month = new Date();
+      month.setMonth(month.getMonth() - 1);
+      const monthStr = month.toISOString();
+      if (type === 'submissions') query = query.gte('submittedAt', monthStr);
+      else if (type === 'audits' || type === 'errors') query = query.gte('auditedAt', monthStr);
+      else if (type === 'appeals') query = query.gte('appealedAt', monthStr);
+      else if (type === 'queries') query = query.gte('queriedDate', monthStr);
+    } else if (period === 'custom' && from && to) {
+      const fromStr = new Date(from).toISOString();
+      const toStr = new Date(to);
+      toStr.setHours(23, 59, 59, 999);
+      const toIso = toStr.toISOString();
+      if (type === 'submissions') query = query.gte('submittedAt', fromStr).lte('submittedAt', toIso);
+      else if (type === 'audits' || type === 'errors') query = query.gte('auditedAt', fromStr).lte('auditedAt', toIso);
+      else if (type === 'appeals') query = query.gte('appealedAt', fromStr).lte('appealedAt', toIso);
+      else if (type === 'queries') query = query.gte('queriedDate', fromStr).lte('queriedDate', toIso);
+    }
+    
     const { data } = await query;
     if (data && data.length > 0) {
       const allHeaders = Object.keys(data[0]);
@@ -2093,7 +2147,7 @@ function AdminReportsView() {
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-6 items-end">
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Time Period</label>
-          <select 
+          <select
             value={period}
             onChange={e => setPeriod(e.target.value)}
             className="h-11 px-4 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none min-w-[200px]"
@@ -2122,8 +2176,8 @@ function AdminReportsView() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { id: 'submissions', title: 'Ad Submissions', desc: 'All ad IDs submitted by artists with version, category and UDAC details.', icon: FileText },
-          { id: 'audits', title: 'QC Audit Log', desc: 'All audit records submitted by proofers including error categories and checklist status.', icon: ClipboardCheck },
-          { id: 'errors', title: 'Error List', desc: 'All flagged errors across all artists with current status and appeal outcome.', icon: AlertCircle },
+          { id: 'audits', title: 'QC Audit Log', desc: 'All audit records (Proofer-marked) including error categories and checklist status.', icon: ClipboardCheck },
+          { id: 'errors', title: 'Error List', desc: 'All auditor-marked errors tracked specifically for proofer performance audits.', icon: AlertCircle },
           { id: 'appeals', title: 'Appeals Log', desc: 'All raised appeals with supervisor decisions and notes.', icon: CheckCircle2 },
           { id: 'queries', title: 'Queries Log', desc: 'All raised queries with supervisor approvals and remarks.', icon: MessageSquare },
         ].map((rpt) => (
@@ -2266,23 +2320,23 @@ function AdminUsersView() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex gap-2 justify-end">
-                      <Button 
-                        variant="secondary" 
-                        className="px-3 py-1.5 text-xs font-bold" 
+                      <Button
+                        variant="secondary"
+                        className="px-3 py-1.5 text-xs font-bold"
                         onClick={() => { setSelectedUser(u); setIsEditOpen(true); }}
                       >
                         Edit
                       </Button>
-                      <Button 
-                        variant="secondary" 
-                        className="px-3 py-1.5 text-xs font-bold" 
+                      <Button
+                        variant="secondary"
+                        className="px-3 py-1.5 text-xs font-bold"
                         onClick={() => { setSelectedUser(u); setIsResetOpen(true); }}
                       >
                         <Key size={14} className="mr-1.5" /> Reset
                       </Button>
-                      <Button 
-                        variant="danger" 
-                        className="px-3 py-1.5 text-xs font-bold" 
+                      <Button
+                        variant="danger"
+                        className="px-3 py-1.5 text-xs font-bold"
                         onClick={() => handleDeleteUser(u)}
                       >
                         Delete
@@ -2301,45 +2355,45 @@ function AdminUsersView() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name *</label>
-              <input 
-                name="name" 
-                required 
-                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+              <input
+                name="name"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Emp ID *</label>
-              <input 
-                name="empId" 
-                required 
-                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+              <input
+                name="empId"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Username *</label>
-              <input 
-                name="username" 
-                required 
-                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+              <input
+                name="username"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password *</label>
-              <input 
-                name="password" 
-                type="password" 
-                required 
-                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+              <input
+                name="password"
+                type="password"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Role</label>
-              <select 
-                name="role" 
+              <select
+                name="role"
                 className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
               >
                 <option>Artist</option>
@@ -2351,17 +2405,17 @@ function AdminUsersView() {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Process</label>
-              <input 
-                name="process" 
-                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+              <input
+                name="process"
+                className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
               />
             </div>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Designation</label>
-            <input 
-              name="designation" 
-              className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+            <input
+              name="designation"
+              className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
             />
           </div>
           <div className="pt-4 flex justify-end gap-3">
@@ -2381,37 +2435,37 @@ function AdminUsersView() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name *</label>
-                <input 
-                  name="name" 
+                <input
+                  name="name"
                   defaultValue={selectedUser.name}
-                  required 
-                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Emp ID *</label>
-                <input 
-                  name="empId" 
+                <input
+                  name="empId"
                   defaultValue={selectedUser.empId}
-                  required 
-                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Username *</label>
-                <input 
-                  name="username" 
+                <input
+                  name="username"
                   defaultValue={selectedUser.username}
-                  required 
-                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Role</label>
-                <select 
-                  name="role" 
+                <select
+                  name="role"
                   defaultValue={selectedUser.role}
                   className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
                 >
@@ -2426,25 +2480,25 @@ function AdminUsersView() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Process</label>
-                <input 
-                  name="process" 
+                <input
+                  name="process"
                   defaultValue={selectedUser.process}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Designation</label>
-                <input 
-                  name="designation" 
+                <input
+                  name="designation"
                   defaultValue={selectedUser.designation}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+                  className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
                 />
               </div>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Status</label>
-              <select 
-                name="isActive" 
+              <select
+                name="isActive"
                 defaultValue={selectedUser.isActive.toString()}
                 className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
               >
@@ -2464,9 +2518,9 @@ function AdminUsersView() {
         )}
       </Modal>
 
-      <Modal 
-        isOpen={isResetOpen} 
-        onClose={() => setIsResetOpen(false)} 
+      <Modal
+        isOpen={isResetOpen}
+        onClose={() => setIsResetOpen(false)}
         title="Reset Password"
         footer={(
           <div className="flex justify-end gap-3 w-full">
@@ -2481,12 +2535,12 @@ function AdminUsersView() {
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">New Password *</label>
-            <input 
+            <input
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               type="text"
               placeholder="Enter new password..."
-              className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700" 
+              className="w-full px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700"
             />
           </div>
         </div>
@@ -2522,7 +2576,7 @@ function ConfigSection({ type, title, config, onAdd, onRemove, inputVal, onInput
           {(config?.[type] || []).map((v: string) => (
             <div key={v} className="group flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
               <span className="text-slate-700 font-semibold text-sm">{v}</span>
-              <button 
+              <button
                 onClick={() => onRemove(type, v)}
                 className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 text-[10px] font-bold uppercase tracking-widest transition-all bg-rose-50 px-2 py-1 rounded border border-rose-100"
               >
@@ -2652,7 +2706,7 @@ function QueriesView({ user, onComplete }: any) {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Database *</label>
-                <select 
+                <select
                   value={formData.database}
                   onChange={e => setFormData({ ...formData, database: e.target.value })}
                   required
@@ -2664,7 +2718,7 @@ function QueriesView({ user, onComplete }: any) {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Ad ID *</label>
-                <input 
+                <input
                   value={formData.adId}
                   onChange={e => setFormData({ ...formData, adId: e.target.value.toUpperCase() })}
                   required
@@ -2674,7 +2728,7 @@ function QueriesView({ user, onComplete }: any) {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Version *</label>
-                <select 
+                <select
                   value={formData.version}
                   onChange={e => setFormData({ ...formData, version: e.target.value })}
                   required
@@ -2686,7 +2740,7 @@ function QueriesView({ user, onComplete }: any) {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Acquired Date *</label>
-                <input 
+                <input
                   type="date"
                   value={formData.acquiredDate}
                   onChange={e => setFormData({ ...formData, acquiredDate: e.target.value })}
@@ -2696,7 +2750,7 @@ function QueriesView({ user, onComplete }: any) {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">UDAC *</label>
-                <input 
+                <input
                   value={formData.udac}
                   onChange={e => setFormData({ ...formData, udac: e.target.value.toUpperCase() })}
                   required
@@ -2706,7 +2760,7 @@ function QueriesView({ user, onComplete }: any) {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Days to Extract</label>
-                <input 
+                <input
                   type="number"
                   value={formData.daysToExtract}
                   onChange={e => setFormData({ ...formData, daysToExtract: parseInt(e.target.value) || 0 })}
@@ -2716,7 +2770,7 @@ function QueriesView({ user, onComplete }: any) {
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Category *</label>
-                <select 
+                <select
                   value={formData.queryCategory}
                   onChange={e => setFormData({ ...formData, queryCategory: e.target.value })}
                   required
@@ -2729,7 +2783,7 @@ function QueriesView({ user, onComplete }: any) {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Query Details *</label>
-              <textarea 
+              <textarea
                 value={formData.queryDetails}
                 onChange={e => setFormData({ ...formData, queryDetails: e.target.value })}
                 required
@@ -2814,6 +2868,7 @@ function QueriesView({ user, onComplete }: any) {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Validated</th>
                   <th className="px-4 py-3">Raised</th>
+                  <th className="px-4 py-3">Handled By</th>
                   <th className="px-4 py-3">Remarks</th>
                 </tr>
               </thead>
@@ -2842,11 +2897,12 @@ function QueriesView({ user, onComplete }: any) {
                         {q.raised}
                       </Badge>
                     </td>
+                    <td className="px-4 py-4 font-bold text-slate-700">{q.approvedBy || '-'}</td>
                     <td className="px-4 py-4 text-slate-500 text-xs italic">{q.remarks || '-'}</td>
                   </tr>
                 ))}
                 {queries.filter(q => q.status === 'Resolved').length === 0 && (
-                  <tr><td colSpan={13} className="px-4 py-12 text-center text-slate-400 font-medium italic">No handled queries found</td></tr>
+                  <tr><td colSpan={14} className="px-4 py-12 text-center text-slate-400 font-medium italic">No handled queries found</td></tr>
                 )}
               </tbody>
             </table>
@@ -2854,9 +2910,9 @@ function QueriesView({ user, onComplete }: any) {
         </Card>
       </div>
 
-      <Modal 
-        isOpen={isApproveOpen} 
-        onClose={() => setIsApproveOpen(false)} 
+      <Modal
+        isOpen={isApproveOpen}
+        onClose={() => setIsApproveOpen(false)}
         title="Review Query"
         footer={(
           <>
@@ -2873,7 +2929,7 @@ function QueriesView({ user, onComplete }: any) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Validated</label>
-              <select 
+              <select
                 value={approvalData.validated}
                 onChange={e => setApprovalData({ ...approvalData, validated: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
@@ -2884,7 +2940,7 @@ function QueriesView({ user, onComplete }: any) {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Raised</label>
-              <select 
+              <select
                 value={approvalData.raised}
                 onChange={e => setApprovalData({ ...approvalData, raised: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-slate-700 appearance-none"
@@ -2896,7 +2952,7 @@ function QueriesView({ user, onComplete }: any) {
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Remarks</label>
-            <textarea 
+            <textarea
               value={approvalData.remarks}
               onChange={e => setApprovalData({ ...approvalData, remarks: e.target.value })}
               placeholder="Enter remarks here..."
