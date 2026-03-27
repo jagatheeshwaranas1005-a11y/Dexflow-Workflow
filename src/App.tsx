@@ -546,7 +546,7 @@ function SubmitAdView({ user, config, artists, onComplete }: any) {
   const [checklist, setChecklist] = useState<Record<string, 'Yes' | 'N/A'>>({});
   const [submissions, setSubmissions] = useState<Submission[]>([]);
 
-  const isArtistDropdown = config?.Settings?.includes('Artist Dropdown Enabled');
+  // Removed: const isArtistDropdown = config?.Settings?.includes('Artist Dropdown Enabled');
 
   const loadSubmissions = async () => {
     // Only load today's submissions for the recent list (My Data tab has full history)
@@ -805,11 +805,12 @@ function MyErrorsView({ user }: any) {
             <thead>
               <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="px-4 py-3">Ad ID</th>
+                <th className="px-4 py-3">Flagged By</th>
                 <th className="px-4 py-3">Error</th>
                 <th className="px-4 py-3">Remarks</th>
                 <th className="px-4 py-3">Appeal Info</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Flagged</th>
+                <th className="px-4 py-3">Flagged At</th>
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
@@ -817,6 +818,9 @@ function MyErrorsView({ user }: any) {
               {errors.map((e: any) => (
                 <tr key={e.id} className="hover:bg-slate-50 transition-all group">
                   <td className="px-4 py-4 font-bold text-slate-900">{e.adId}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">
+                    {e.auditedProoferName ? `Auditor: ${e.prooferName}` : `Proofer: ${e.prooferName}`}
+                  </td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate">{e.errorRemarks || '-'}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium max-w-xs">
@@ -894,7 +898,7 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
   });
   const [checklist, setChecklist] = useState<Record<string, 'Yes' | 'N/A'>>({});
 
-  const isArtistDropdown = config?.Settings?.includes('Artist Dropdown Enabled');
+  // Removed: const isArtistDropdown = config?.Settings?.includes('Artist Dropdown Enabled');
 
   const loadAds = async () => {
     const { data } = await supabase
@@ -999,40 +1003,27 @@ function QCAuditView({ user, config, artists, onComplete }: any) {
                 <input 
                   value={formData.adId}
                   onChange={e => handleAdIdChange(e.target.value)}
-                  list="pending-ads"
                   placeholder="Enter or select Ad ID"
                   className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
                   required
                 />
-                <datalist id="pending-ads">
-                  {ads.map(a => <option key={a.id} value={a.adId}>{a.artistName}</option>)}
-                </datalist>
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Artist Name *</label>
-              {isArtistDropdown ? (
-                <select
-                  value={formData.artistName}
-                  onChange={e => {
-                    const selected = artists.find((a: any) => a.name === e.target.value);
-                    setFormData({ ...formData, artistName: e.target.value, empId: selected?.empId || '' });
-                  }}
-                  className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
-                  required
-                >
-                  <option value="">Select Artist</option>
-                  {artists.map((a: any) => <option key={a.id} value={a.name}>{a.name} ({a.empId})</option>)}
-                </select>
-              ) : (
-                <input 
-                  value={formData.artistName}
-                  onChange={e => setFormData({ ...formData, artistName: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
-                  required
-                />
-              )}
+              <select
+                value={formData.artistName}
+                onChange={e => {
+                  const selected = artists.find((a: any) => a.name === e.target.value);
+                  setFormData({ ...formData, artistName: e.target.value, empId: selected?.empId || '' });
+                }}
+                className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium appearance-none"
+                required
+              >
+                <option value="">Select Artist</option>
+                {artists.map((a: any) => <option key={a.id} value={a.name}>{a.name} ({a.empId})</option>)}
+              </select>
             </div>
           </div>
 
@@ -1255,13 +1246,9 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
               <input 
                 value={formData.adId}
                 onChange={e => handleAdIdChange(e.target.value)}
-                list="auditor-ads"
                 placeholder="Enter Ad ID"
                 className="w-full px-4 py-2.5 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all font-medium"
               />
-              <datalist id="auditor-ads">
-                {ads.map(a => <option key={a.id} value={a.adId}>{a.artistName}</option>)}
-              </datalist>
             </div>
 
             <div className="space-y-2">
@@ -1439,6 +1426,7 @@ function MyDataView({ user }: any) {
                   <>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Artist</th>
                     {user.role === 'Auditor' && <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proofer</th>}
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Flagged By</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Error Category</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Audited At</th>
                   </>
@@ -1461,6 +1449,7 @@ function MyDataView({ user }: any) {
                     <>
                       <td className="px-6 py-4 text-sm font-medium text-slate-600">{row.artistName}</td>
                       {user.role === 'Auditor' && <td className="px-6 py-4 text-sm font-medium text-slate-600">{row.auditedProoferName || '-'}</td>}
+                      <td className="px-6 py-4 text-sm font-medium text-slate-600">{row.prooferName}</td>
                       <td className="px-6 py-4">
                         <Badge color={row.errorCategory === 'No Error' ? 'green' : 'red'}>{row.errorCategory}</Badge>
                       </td>
@@ -1717,6 +1706,7 @@ function AllErrorsView() {
                 <th className="px-4 py-3">Ad ID</th>
                 <th className="px-4 py-3">Artist</th>
                 <th className="px-4 py-3">Proofer</th>
+                <th className="px-4 py-3">Auditor</th>
                 <th className="px-4 py-3">Error</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Date</th>
@@ -1727,7 +1717,8 @@ function AllErrorsView() {
                 <tr key={e.id} className="hover:bg-slate-50 transition-all group">
                   <td className="px-4 py-4 font-bold text-slate-900">{e.adId}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.artistName}</td>
-                  <td className="px-4 py-4 text-slate-600 font-medium">{e.prooferName}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName || e.prooferName}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName ? e.prooferName : '-'}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
                   <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(e.auditedAt).toLocaleString()}</td>
@@ -1788,7 +1779,7 @@ function AuditReportView() {
                 <tr key={e.id} className="hover:bg-slate-50 transition-all group">
                   <td className="px-4 py-4 font-bold text-slate-900">{e.adId}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.artistName}</td>
-                  <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName || '-'}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.prooferName}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
                   <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
