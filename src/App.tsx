@@ -1715,6 +1715,7 @@ function AllErrorsView() {
                 <th className="px-4 py-3">Artist</th>
                 <th className="px-4 py-3">Proofer</th>
                 <th className="px-4 py-3">Error</th>
+                <th className="px-4 py-3">Remarks</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Date</th>
               </tr>
@@ -1726,12 +1727,13 @@ function AllErrorsView() {
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.artistName}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.prooferName}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium max-w-[200px] truncate" title={e.errorRemarks}>{e.errorRemarks || '-'}</td>
                   <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(e.auditedAt).toLocaleString()}</td>
                 </tr>
               ))}
               {errors.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium italic">No errors recorded</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium italic">No errors recorded</td></tr>
               )}
             </tbody>
           </table>
@@ -1786,6 +1788,7 @@ function AuditReportView() {
                 <th className="px-4 py-3">Proofer</th>
                 <th className="px-4 py-3">Auditor</th>
                 <th className="px-4 py-3">Audit Error</th>
+                <th className="px-4 py-3">Remarks</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Date</th>
               </tr>
@@ -1798,12 +1801,13 @@ function AuditReportView() {
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.auditedProoferName || '-'}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.prooferName}</td>
                   <td className="px-4 py-4 text-slate-600 font-medium">{e.errorCategory}</td>
+                  <td className="px-4 py-4 text-slate-600 font-medium max-w-[200px] truncate" title={e.errorRemarks}>{e.errorRemarks || '-'}</td>
                   <td className="px-4 py-4"><StatusBadge status={e.status || ''} /></td>
                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(e.auditedAt).toLocaleString()}</td>
                 </tr>
               ))}
               {errors.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium italic">No audit errors recorded</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400 font-medium italic">No audit errors recorded</td></tr>
               )}
             </tbody>
           </table>
