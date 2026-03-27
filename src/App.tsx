@@ -132,6 +132,8 @@ export default function App() {
   const [proofers, setProofers] = useState<{id: number, name: string, empId: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [resetData, setResetData] = useState({ empId: '', currentPassword: '', newPassword: '' });
 
   // Auth State
   useEffect(() => {
@@ -224,6 +226,42 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     sessionStorage.removeItem('dexflow_user');
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetData.empId || !resetData.currentPassword || !resetData.newPassword) return alert('All fields required');
+    
+    setLoading(true);
+    try {
+      const { data: userToReset } = await supabase
+        .from('users')
+        .select('*')
+        .eq('empId', resetData.empId)
+        .eq('password', resetData.currentPassword)
+        .single();
+
+      if (userToReset) {
+        const { error } = await supabase
+          .from('users')
+          .update({ password: resetData.newPassword })
+          .eq('id', userToReset.id);
+
+        if (!error) {
+          alert('Password reset successfully! You can now log in.');
+          setIsResetOpen(false);
+          setResetData({ empId: '', currentPassword: '', newPassword: '' });
+        } else {
+          alert('Failed to update password');
+        }
+      } else {
+        alert('Invalid Employee ID or Current Password');
+      }
+    } catch (err) {
+      alert('Reset failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Inactivity Timeout (5 minutes)
@@ -326,13 +364,64 @@ export default function App() {
               </Button>
             </form>
             
-            <div className="mt-10 text-center">
-              <p className="text-xs text-slate-400 font-medium">
-                Don't have an account? <button className="text-brand-500 font-bold hover:underline">Sign Up</button>
+            <div className="text-center mt-6">
+              <p className="text-slate-500 text-sm font-medium">
+                Forgot password? 
+                <button 
+                  onClick={() => setIsResetOpen(true)}
+                  className="ml-1 text-brand-600 font-bold hover:text-brand-700 hover:underline transition-all"
+                >
+                  Reset here
+                </button>
               </p>
             </div>
           </div>
         </motion.div>
+
+        <Modal
+          isOpen={isResetOpen}
+          onClose={() => setIsResetOpen(false)}
+          title="Reset Account Password"
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setIsResetOpen(false)}>Cancel</Button>
+              <Button onClick={handleResetPassword}>Update Password</Button>
+            </>
+          )}
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Employee ID *</label>
+              <input 
+                type="text" 
+                value={resetData.empId}
+                onChange={e => setResetData({ ...resetData, empId: e.target.value })}
+                placeholder="Enter your Employee ID"
+                className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-medium text-slate-700"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Current Password *</label>
+              <input 
+                type="password" 
+                value={resetData.currentPassword}
+                onChange={e => setResetData({ ...resetData, currentPassword: e.target.value })}
+                placeholder="Enter current password"
+                className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-medium text-slate-700"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">New Password *</label>
+              <input 
+                type="password" 
+                value={resetData.newPassword}
+                onChange={e => setResetData({ ...resetData, newPassword: e.target.value })}
+                placeholder="Enter new password"
+                className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-medium text-slate-700"
+              />
+            </div>
+          </div>
+        </Modal>
       </div>
     );
   }
@@ -1096,16 +1185,15 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
     if (!formData.adId || !formData.errorCategory || !formData.artistName || !formData.auditedProoferName) {
       return alert('Fill required fields (Ad ID, Artist, Proofer, Error Category)');
     }
-    if (formData.errorCategory === 'No Error') {
-      return alert('Auditors can only enter ads with errors. For ads without errors, please use the standard QC process or skip.');
-    }
-    if (!formData.remarks) return alert('Remarks required for errors');
+    // Removed: if (formData.errorCategory === 'No Error') { return alert('Auditors can only enter ads with errors. For ads without errors, please use the standard QC process or skip.'); }
+    if (formData.errorCategory !== 'No Error' && !formData.remarks) return alert('Remarks required for errors');
 
     const checkCount = Object.keys(checklist).length;
     const reqCount = config?.ProoferChecklist?.length || 0;
     if (checkCount !== reqCount) return alert('Please complete all checklist items');
 
     let submissionId = ads.find(a => a.adId === formData.adId)?.id;
+    const submissionStatus = formData.errorCategory === 'No Error' ? 'Approved' : 'Audit Error';
 
     try {
       if (!submissionId) {
@@ -1116,12 +1204,12 @@ function AuditorAuditView({ user, config, artists, proofers, onComplete }: any) 
             version: formData.version,
             database: formData.database,
             udac: formData.udac,
-            status: 'Audit Error'
+            status: submissionStatus // Use the determined status
          }).select('id').single();
          if (subErr) throw subErr;
          submissionId = newSub.id;
       } else {
-         await supabase.from('submissions').update({ status: 'Audit Error' }).eq('id', submissionId);
+         await supabase.from('submissions').update({ status: submissionStatus }).eq('id', submissionId);
       }
 
       const auditData: any = {
@@ -1438,7 +1526,11 @@ function AppealsView({ user }: any) {
   const handleApprove = async () => {
     if (!approveModal.appealId) return;
     const status = 'Appeal Accepted';
-    const { error } = await supabase.from('appeals').update({ status, resolutionNote: approveNote }).eq('id', approveModal.appealId);
+    const { error } = await supabase.from('appeals').update({ 
+      status, 
+      resolutionNote: approveNote,
+      resolvedBy: user.name 
+    }).eq('id', approveModal.appealId);
     if (!error) {
       const appeal = appeals.find(a => a.id === approveModal.appealId);
       if (appeal) await supabase.from('submissions').update({ status }).eq('id', (appeal as any).submission_id);
@@ -1458,7 +1550,11 @@ function AppealsView({ user }: any) {
     const isAuditorError = !!(appeal as any)?.audits?.auditedProoferName;
     const status = isAuditorError ? 'Audit Appeal-Reject' : 'Appeal Rejected';
     
-    const { error } = await supabase.from('appeals').update({ status, resolutionNote: rejectNote }).eq('id', rejectModal.appealId);
+    const { error } = await supabase.from('appeals').update({ 
+      status, 
+      resolutionNote: rejectNote,
+      resolvedBy: user.name 
+    }).eq('id', rejectModal.appealId);
     if (!error) {
       if (appeal) await supabase.from('submissions').update({ status }).eq('id', (appeal as any).submission_id);
       setRejectModal({ open: false, appealId: null });
@@ -1485,6 +1581,7 @@ function AppealsView({ user }: any) {
                 <th className="px-4 py-3">Error</th>
                 <th className="px-4 py-3">Appeal Description</th>
                 <th className="px-4 py-3">Raised</th>
+                <th className="px-4 py-3">Resolved By</th>
                 <th className="px-4 py-3">Status / Action</th>
               </tr>
             </thead>
@@ -1497,7 +1594,8 @@ function AppealsView({ user }: any) {
                     <Badge color="red">{(a as any).errorCategory || 'Error'}</Badge>
                   </td>
                   <td className="px-4 py-4 text-slate-600 font-medium max-w-xs truncate" title={a.appealDesc}>{a.appealDesc}</td>
-                  <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(a.appealedAt).toLocaleString()}</td>
+                   <td className="px-4 py-4 text-slate-400 text-xs font-medium">{new Date(a.appealedAt).toLocaleString()}</td>
+                  <td className="px-4 py-4 text-slate-600 font-bold">{a.resolvedBy || '-'}</td>
                   <td className="px-4 py-4">
                     {a.status === 'Pending' && (isAdmin || user.role === 'Supervisor') ? (
                       <div className="flex gap-2">
@@ -1507,8 +1605,8 @@ function AppealsView({ user }: any) {
                     ) : (
                       <div className="flex flex-col gap-1">
                         <StatusBadge status={a.status} />
-                        {(a.status === 'Appeal Rejected' || a.status === 'Audit Appeal-Reject') && a.resolutionNote && (
-                          <span className="text-[10px] text-rose-500 font-medium">Reason: {a.resolutionNote}</span>
+                        {a.resolutionNote && (
+                          <span className="text-[10px] text-brand-600 font-medium whitespace-pre-wrap max-w-[150px]">Note: {a.resolutionNote}</span>
                         )}
                       </div>
                     )}
@@ -1516,7 +1614,7 @@ function AppealsView({ user }: any) {
                 </tr>
               ))}
               {appeals.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium italic">No appeals found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium italic">No appeals found</td></tr>
               )}
             </tbody>
           </table>

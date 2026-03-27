@@ -66,6 +66,7 @@ export interface Appeal {
   status: string;
   appealedAt: string;
   resolutionNote?: string;
+  resolvedBy?: string;
   audits?: Audit;
   // UI-only joined fields
   adId?: string;
