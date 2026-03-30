@@ -2199,19 +2199,41 @@ function AdminReportsView() {
           d.resolutionNote || '',
           d.resolvedBy || ''
         ]);
+      } else if (type === 'submissions') {
+        // Ad Submissions
+        headers = ['S.No', 'artistName', 'empId', 'adId', 'version', 'database', 'udac', 'status', 'submittedAt'];
+        rows = data.map((d: any, i: number) => [
+          i + 1,
+          d.artistName || '',
+          d.empId || '',
+          d.adId || '',
+          d.version || '',
+          d.database || '',
+          d.udac || '',
+          d.status || '',
+          d.submittedAt ? new Date(d.submittedAt).toLocaleString() : ''
+        ]);
       } else {
-        // Default (submissions or others)
+        // Default (others)
         const allHeaders = Object.keys(data[0]);
         headers = ['S.No', ...allHeaders.filter(h => h !== 'id')];
         rows = data.map((row: any, index: number) => [
           index + 1,
-          ...headers.slice(1).map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`)
+          ...headers.slice(1).map(h => row[h] || '')
         ]);
       }
 
+      const formatCell = (cell: any) => {
+        const str = String(cell);
+        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
       csv = [
         headers.join(','),
-        ...rows.map(row => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ...rows.map(row => row.map(formatCell).join(','))
       ].join('\n');
 
       const blob = new Blob([csv], { type: 'text/csv' });
