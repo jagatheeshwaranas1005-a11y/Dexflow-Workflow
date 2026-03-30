@@ -2073,13 +2073,19 @@ function AdminReportsView() {
   // Replacing handleExport with direct supabase queries.
   const handleExport = async (type: string) => {
     let query;
-    
+    // Fetch users for Emp ID lookup (needed for QC Audit Log)
+    const { data: allUsers } = await supabase.from('users').select('name, empId');
+    const userMap: Record<string, string> = {};
+    allUsers?.forEach(u => { if (u.name) userMap[u.name] = u.empId || ''; });
+
     if (type === 'audits') {
       // QC Audit Log = Errors/Audits marked by proofers
-      query = supabase.from('audits').select('*').is('auditedProoferName', null);
+      query = supabase.from('audits').select('*, submissions(*)').is('auditedProoferName', null);
     } else if (type === 'errors') {
       // Error List = Errors marked by auditors
-      query = supabase.from('audits').select('*').not('auditedProoferName', 'is', null);
+      query = supabase.from('audits').select('*, submissions(*)').not('auditedProoferName', 'is', null);
+    } else if (type === 'appeals') {
+      query = supabase.from('appeals').select('*, audits!inner(*, submissions!inner(*))');
     } else {
       query = supabase.from(type).select('*');
     }
@@ -2121,14 +2127,91 @@ function AdminReportsView() {
     
     const { data } = await query;
     if (data && data.length > 0) {
-      const allHeaders = Object.keys(data[0]);
-      const headers = allHeaders.filter(h => h !== 'id');
-      const csv = [
-        ['S.No', ...headers].join(','),
-        ...data.map((row: any, index: number) => [
+      let csv = '';
+      let headers: string[] = [];
+      let rows: any[] = [];
+
+      if (type === 'errors') {
+        // Error List
+        headers = ['S.No', 'Database', 'Ad ID', 'Audit Date', 'errorCategory', 'errorRemarks', 'ArtistName', 'prooferName', 'UDAC', 'AuditorName'];
+        rows = data.map((d: any, i: number) => [
+          i + 1,
+          d.submissions?.database || '',
+          d.submissions?.adId || '',
+          new Date(d.auditedAt).toLocaleString(),
+          d.errorCategory || '',
+          d.errorRemarks || '',
+          d.submissions?.artistName || '',
+          d.auditedProoferName || '',
+          d.submissions?.udac || '',
+          d.prooferName || ''
+        ]);
+      } else if (type === 'audits') {
+        // QC Audit Log
+        headers = ['S.No', 'Artist', 'Artist Emp ID', 'prooferName', 'Proofer Emp ID', 'UDAC', 'Ad Id', 'Ad Type / Version', 'errorCategory', 'errorRemarks', 'Action Time'];
+        rows = data.map((d: any, i: number) => [
+          i + 1,
+          d.submissions?.artistName || '',
+          d.submissions?.empId || '',
+          d.prooferName || '',
+          userMap[d.prooferName] || '',
+          d.submissions?.udac || '',
+          d.submissions?.adId || '',
+          d.submissions?.version || '',
+          d.errorCategory || '',
+          d.errorRemarks || '',
+          new Date(d.auditedAt).toLocaleString()
+        ]);
+      } else if (type === 'queries') {
+        // Queries Log
+        headers = ['S.No', 'database', 'adId', 'version', 'acquiredDate', 'udac', 'queriedBy', 'queriedDate', 'daysToExtract', 'queryCategory', 'queryDetails', 'status', 'validated', 'raised', 'remarks', 'approvedBy', 'resolvedAt'];
+        rows = data.map((d: any, i: number) => [
+          i + 1,
+          d.database || '',
+          d.adId || '',
+          d.version || '',
+          d.acquiredDate || '',
+          d.udac || '',
+          d.queriedBy || '',
+          d.queriedDate ? new Date(d.queriedDate).toLocaleString() : '',
+          d.daysToExtract || '',
+          d.queryCategory || '',
+          d.queryDetails || '',
+          d.status || '',
+          d.validated || '',
+          d.raised || '',
+          d.remarks || '',
+          d.approvedBy || '',
+          d.resolvedAt ? new Date(d.resolvedAt).toLocaleString() : ''
+        ]);
+      } else if (type === 'appeals') {
+        // Appeals Log
+        headers = ['S.No', 'ArtistName', 'prooferName', 'AuditorName', 'Ad ID', 'appealDesc', 'status', 'appealedAt', 'resolutionNote', 'resolvedBy'];
+        rows = data.map((d: any, i: number) => [
+          i + 1,
+          d.audits?.submissions?.artistName || '',
+          d.audits?.auditedProoferName || d.audits?.prooferName || '',
+          d.audits?.auditedProoferName ? d.audits?.prooferName : '', // Auditor is prooferName if auditedProoferName exists
+          d.audits?.submissions?.adId || '',
+          d.appealDesc || '',
+          d.status || '',
+          d.appealedAt ? new Date(d.appealedAt).toLocaleString() : '',
+          d.resolutionNote || '',
+          d.resolvedBy || ''
+        ]);
+      } else {
+        // Default (submissions or others)
+        const allHeaders = Object.keys(data[0]);
+        headers = ['S.No', ...allHeaders.filter(h => h !== 'id')];
+        rows = data.map((row: any, index: number) => [
           index + 1,
-          ...headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`)
-        ].join(','))
+          ...headers.slice(1).map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`)
+        ]);
+      }
+
+      csv = [
+        headers.join(','),
+        ...rows.map(row => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
 
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -2140,6 +2223,7 @@ function AdminReportsView() {
       alert('No data found for this period');
     }
   };
+
 
   return (
     <div className="space-y-8">
