@@ -2133,7 +2133,7 @@ function AdminReportsView() {
 
       if (type === 'errors') {
         // Error List
-        headers = ['S.No', 'Database', 'Ad ID', 'Audit Date', 'errorCategory', 'errorRemarks', 'ArtistName', 'prooferName', 'UDAC', 'AuditorName'];
+        headers = ['S.No', 'Database', 'Ad ID', 'Audit Date', 'errorCategory', 'errorRemarks', 'ArtistName', 'Artist Emp ID', 'prooferName', 'Proofer Emp ID', 'UDAC', 'AuditorName', 'Auditor Emp ID'];
         rows = data.map((d: any, i: number) => [
           i + 1,
           d.submissions?.database || '',
@@ -2142,9 +2142,12 @@ function AdminReportsView() {
           d.errorCategory || '',
           d.errorRemarks || '',
           d.submissions?.artistName || '',
+          d.submissions?.empId || '',
           d.auditedProoferName || '',
+          userMap[d.auditedProoferName] || '',
           d.submissions?.udac || '',
-          d.prooferName || ''
+          d.prooferName || '',
+          userMap[d.prooferName] || ''
         ]);
       } else if (type === 'audits') {
         // QC Audit Log
