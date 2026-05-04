@@ -2124,8 +2124,12 @@ function AdminReportsView() {
       else if (type === 'appeals') query = query.gte('appealedAt', fromStr).lte('appealedAt', toIso);
       else if (type === 'queries') query = query.gte('queriedDate', fromStr).lte('queriedDate', toIso);
     }
-    
+
     const { data } = await query;
+    const getTime = (r: any) => {
+      const d = new Date(r.submittedAt || r.auditedAt || r.queriedDate || r.appealedAt);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    };
     if (data && data.length > 0) {
       let csv = '';
       let headers: string[] = [];
